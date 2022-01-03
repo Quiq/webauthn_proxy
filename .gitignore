@@ -1,0 +1,4 @@
+/config.yml
+/credentials.yml
+webauthn_proxy
+.DS_Store

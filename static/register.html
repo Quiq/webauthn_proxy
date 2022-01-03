@@ -1,0 +1,33 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>WebAuthn Proxy Register</title>
+        <link rel="stylesheet" type="text/css" href="/styles.css"  />
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="/script.js"></script>
+        <script>
+            $(document).ready(() => {
+                if (browserCheck()) {
+                    $('#registerButton').click(registerUser);
+                }
+            });
+        </script>
+    </head>
+    <body>
+        <div id="form">
+            <img src="/title-image.png" />
+            <div id="errorMessages" class="errorMessageText"></div>
+            <div id="successMessages" class="successMessageText"></div>
+            <br />
+            <table>
+                <tr>
+                    <td>Register User:</td>
+                    <td><input type="text" name="username" id="username" /></td>
+                    <td><button id="registerButton">Register</button></td>
+                </tr>
+            </table>
+            <br />
+            <textarea readonly id="preformattedMessages" rows="4" cols="100"></textarea>
+        </div>
+    </body>
+</html>

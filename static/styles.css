@@ -1,0 +1,21 @@
+#form {
+    text-align: center;
+}
+
+#form table {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#successMessages {
+    color: green;
+}
+
+#errorMessages {
+    color: red;
+}
+
+#preformattedMessages {
+    font-family: monospace;
+    /* white-space: pre;*/
+}

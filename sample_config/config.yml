@@ -1,0 +1,14 @@
+credentialFile: /opt/webauthn_proxy/credentials.yml
+enableFullRegistration: false
+rpDisplayName: "Quiq, Inc."
+# RP ID should be set to the address users will use to talk to the server
+rpID: localhost
+# Listen on localhost when running in development, 
+# 0.0.0.0 when in docker or to expose the service to external callers
+serverAddress: localhost 
+# serverAddress: 0.0.0.0
+serverPort: 8080
+sessionLengthSeconds: 3600
+staticPath: /static
+# Regex will allow usernames with uppercase, lowercase, digits, or "-.@". Basically, email addresses,
+usernameRegex: ^[A-Za-z0-9\-\_\.\@]+$
