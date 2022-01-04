@@ -152,13 +152,14 @@ func main() {
 
 	r.HandleFunc("/webauthn/auth", GetUserAuth)
 	r.HandleFunc("/webauthn/login", HandleLogin)
+	r.HandleFunc("/webauthn/register", HandleRegister)
 	r.HandleFunc("/webauthn/login/get_credential_request_options", GetCredentialRequestOptions)
 	r.HandleFunc("/webauthn/login/process_login_assertion", ProcessLoginAssertion)
 	r.HandleFunc("/webauthn/register/get_credential_creation_options", GetCredentialCreationOptions)
 	r.HandleFunc("/webauthn/register/process_registration_attestation", ProcessRegistrationAttestation)
 
 	// All other paths are treated as references to static assets
-	r.Handle("/", http.FileServer(http.Dir(configuration.StaticPath)))
+	r.Handle("/webauthn_static/", http.StripPrefix("/webauthn_static/", http.FileServer(http.Dir(configuration.StaticPath))))
 
 	serverAddress := fmt.Sprintf("%s:%s", configuration.ServerAddress, configuration.ServerPort)
 	log.Println("Starting server at", serverAddress)
@@ -180,7 +181,7 @@ func GetUserAuth(w http.ResponseWriter, r *http.Request) {
 
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	session, _ := sessionStore.Get(r, "webauthn-proxy-session")
-	redirectUrl := util.GetRedirectUrl(r, "/authenticated.html")
+	redirectUrl := util.GetRedirectUrl(r, "/webauthn_static/authenticated.html")
 
 	if auth, ok := session.Values["authenticated"].(bool); ok && auth {
 		http.Redirect(w, r, redirectUrl, http.StatusFound)
@@ -188,6 +189,11 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(configuration.StaticPath, "login.html"))
 	}
 
+	return
+}
+
+func HandleRegister(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, filepath.Join(configuration.StaticPath, "register.html"))
 	return
 }
 

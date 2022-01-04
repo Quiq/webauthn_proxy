@@ -51,11 +51,10 @@ location / {
 }
 
 # WebAuthn Proxy.
-location = /webauthn/auth {
-        internal;
+location = /webauthn/ {
         proxy_pass http://127.0.0.1:8080;
 }
-location /webauthn/ {
+location /webauthn_static/ {
         proxy_pass http://127.0.0.1:8080;
 }
 ```
@@ -88,6 +87,14 @@ location = /oauth2/auth {
 }
 location /oauth2/ {
         proxy_pass http://127.0.0.1:4180;
+}
+
+# WebAuthn Proxy.
+location = /webauthn/ {
+        proxy_pass http://127.0.0.1:8080;
+}
+location /webauthn_static/ {
+        proxy_pass http://127.0.0.1:8080;
 }
 ```
 
