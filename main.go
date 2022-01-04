@@ -88,7 +88,7 @@ func main() {
 	log.Printf("Reading config file, %s/config.yml", configpath)
 	viper.AddConfigPath(configpath)
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalln("Error reading config file %s/config.yml.", err)
+		log.Fatalf("\nError reading config file %s/config.yml. %s", configpath, err.Error())
 	}
 
 	if err = viper.Unmarshal(&configuration); err != nil {
