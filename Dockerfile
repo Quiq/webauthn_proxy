@@ -1,7 +1,7 @@
  FROM golang:1.17.5-alpine3.15 as build
 WORKDIR /usr/local/go/src/github.com/Quiq/webauthn_proxy
 ADD . /usr/local/go/src/github.com/Quiq/webauthn_proxy
-RUN go mod tidy
+RUN go mod tidy -compat=1.17
 RUN go build -o /webauthn_proxy
 RUN  chmod +x /webauthn_proxy
 

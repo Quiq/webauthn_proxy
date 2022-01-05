@@ -18,6 +18,7 @@ import (
 	"github.com/duo-labs/webauthn.io/session"
 	"github.com/duo-labs/webauthn/webauthn"
 	"github.com/gorilla/sessions"
+
 	"github.com/spf13/viper"
 
 	yaml "gopkg.in/yaml.v3"
