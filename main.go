@@ -24,13 +24,13 @@ import (
 )
 
 var (
-	webAuthn             *webauthn.WebAuthn
-	webauthnSessionStore *session.Store
 	configuration        Configuration
-	users                map[string]u.User
 	registrations        map[string]u.User
 	sessionStoreKey      []byte
 	sessionStore         *sessions.CookieStore
+	users                map[string]u.User
+	webAuthn             *webauthn.WebAuthn
+	webauthnSessionStore *session.Store
 )
 
 type Configuration struct {
@@ -80,12 +80,19 @@ func main() {
 	registrations = make(map[string]u.User)
 
 	viper.SetDefault("configpath", "/opt/webauthn_proxy")
-	viper.SetDefault("enablefullregistration", false)
 	viper.SetEnvPrefix("webauthn_proxy")
 	viper.BindEnv("configpath")
-
 	viper.SetConfigName("config")
 	viper.SetConfigType("yml")
+
+	// Set configuration defaults
+	viper.SetDefault("credentialfile", "/opt/webauthn_proxy/credentials.yml")
+	viper.SetDefault("enablefullregistration", false)
+	viper.SetDefault("serveraddress", "127.0.0.1")
+	viper.SetDefault("serverport", "8080")
+	viper.SetDefault("sessionlengthseconds", 86400)
+	viper.SetDefault("staticpath", "/static/")
+	viper.SetDefault("usernameregex", "^.*$")
 
 	configpath := viper.GetString("configpath")
 	log.Printf("Reading config file, %s/config.yml", configpath)

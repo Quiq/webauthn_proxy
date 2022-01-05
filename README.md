@@ -13,7 +13,7 @@ Next, copy the `config.yml` file from the `sample_config` directory and modify i
 
 You will also need a `credentials.yml` file, which is a simple YAML file with key-value pairs of username to credential. The credential is a base64 encoded JSON object which is output during the registration process. You can start with an empty credentials file until you've registered your first user, the path to this file is one of the values in `config.yml`. 
 
-_**Important Note**_: One of the most critical properties in the config is `enableFullRegistration`. By setting this value to `true`, a user will be able to authenticate immediately after they have registered without any intervention from a system administrator (until the proxy is restarted). This is useful for testing, but we highly recommend you set this property to `false` in production.
+_**Important Note**_: One of the most critical properties in the config is `enableFullRegistration`. By setting this value to `true`, a user will be able to authenticate immediately after they have registered without any intervention from a system administrator, until the proxy is restarted. This is useful for testing, but we highly recommend you set this property to `false` in production.
 
 Once the proxy is started you can register a user by going to _http://localhost:8080/register.html_ (assuming you used 8080 as the server port). Enter a username and then click _Register_. You will be prompted to authenticate, which is a browser dependent operation (see below). After following the prompts, you will be given a username and credential combination to add to your credentials file. You should add this entry and then restart the proxy, there is no way to hot-reload it at the moment.
 
@@ -100,17 +100,17 @@ location /webauthn_static/ {
 
 
 ## Configuration Elements
-| Element | Description |
-| ------- | ----------- |
-| credentialFile | Path and filename for where credentials are stored |
-| enableFullRegistration | Whether registered users can authenticate immediately or if admin needs to copy credential to the cred file and restart proxy first |
-| rpDisplayName | Display name of relying party |
-| rpOrigin | Full origin used for accessing the proxy, including port if not 80/443, e.g. http://example.com:8080 |
-| serverAddress | Address the proxy server should listen on (usually localhost or 0.0.0.0) |
-| serverPort | Port the proxy server should listen on |
-| sessionLengthSeconds | Length of time logins are valid for, in seconds | 
-| staticPath | Path on disk to static assets | 
-| usernameRegex | Regex for validating usernames | 
+| Element | Description | Default |
+| ------- | ----------- | ------- |
+| credentialFile | Path and filename for where credentials are stored | /opt/webauthn_proxy/credentials.yml |
+| enableFullRegistration | When set to **_true_**, users can authenticate immediately after registering. Useful for testing, but generally not safe for production. | false |
+| rpDisplayName | Display name of relying party | _<None>_ |
+| rpOrigin | Full origin used for accessing the proxy, including port if not 80/443, e.g. http://example.com:8080 | _<None>_ |
+| serverAddress | Address the proxy server should listen on (usually 127.0.0.1 or 0.0.0.0) | 127.0.0.1 |
+| serverPort | Port the proxy server should listen on | 8080 |
+| sessionLengthSeconds | Length of time logins are valid for, in seconds | 86400 |
+| staticPath | Path on disk to static assets | /static/ |
+| usernameRegex | Regex for validating usernames | ^.*$ |
 
 
 ## Thanks! 

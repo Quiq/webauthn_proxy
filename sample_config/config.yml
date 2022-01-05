@@ -1,16 +1,32 @@
-credentialFile: /opt/webauthn_proxy/credentials.yml
-enableFullRegistration: false
+# credentialFile - Path to credentials file
+## credentialFile: /opt/webauthn_proxy/credentials.yml
+
+# enableFullRegistration - Enable registered users to automatically authenticate
+# without copying their credential to the credentials file and rebooting 
+## enableFullRegistration: false
+
+# rpDisplayName - Relying party display name
 rpDisplayName: "Example, Inc."
 
-# RP Origin should be set to the address users will use to talk to the server
+# rpOrigin - Relying party origin, should be set to the address users will use to 
+# talk to the proxy
 rpOrigin: https://example.com
 
-# Listen on localhost when running in development, 
-# 0.0.0.0 when in docker or to expose the service to external callers
-serverAddress: localhost 
-serverPort: 8080
-sessionLengthSeconds: 3600
-staticPath: /static
+# serverAddress - Address for the proxy to listen on
+# Use 127.0.0.1 when running in development, 0.0.0.0 when in docker or 
+# to expose the service to external callers
+## serverAddress: 127.0.0.1 
 
-# Regex will allow usernames with uppercase, lowercase, digits, or "-.@". Basically, email addresses
-usernameRegex: ^[A-Za-z0-9\-\_\.\@]+$
+# serverPort - Port for the proxy to listen on
+## serverPort: 8080
+
+# sessionLengthSeconds - Time in seconds that user will be authenticated for
+## sessionLengthSeconds: 3600
+
+# staticPath - Path to static assets
+## staticPath: /static/
+
+# usernameRegex - Regex used to validate usernames
+# The following regex will allow usernames with uppercase, lowercase, digits, or "-.@" ...
+# Basically, email addresses
+## usernameRegex: ^[A-Za-z0-9\-\_\.\@]+$
