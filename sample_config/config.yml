@@ -2,8 +2,7 @@ credentialFile: /opt/webauthn_proxy/credentials.yml
 enableFullRegistration: false
 rpDisplayName: "Example, Inc."
 
-# RP ID should be set to the address users will use to talk to the server
-rpID: example.com
+# RP Origin should be set to the address users will use to talk to the server
 rpOrigin: https://example.com
 
 # Listen on localhost when running in development, 
