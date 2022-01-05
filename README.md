@@ -106,6 +106,7 @@ location /webauthn_static/ {
 | enableFullRegistration | Whether registered users can authenticate immediately or if admin needs to copy credential to the cred file and restart proxy first |
 | rpDisplayName | Display name of relying party |
 | rpID | ID of relying party, should be set to the hostname used for accessing the proxy |
+| rpOrigin | Full origin used for accessing the proxy, including port if not 80/443, e.g. http://example.com:8080 |
 | serverAddress | Address the proxy server should listen on (usually localhost or 0.0.0.0) |
 | serverPort | Port the proxy server should listen on |
 | sessionLengthSeconds | Length of time logins are valid for, in seconds | 

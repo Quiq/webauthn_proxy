@@ -37,6 +37,7 @@ type Configuration struct {
 
 	RPDisplayName string // Relying party display name
 	RPID          string // Relying party ID
+	RPOrigin      string // Relying party origin
 
 	ServerAddress        string
 	ServerPort           string
@@ -126,7 +127,7 @@ func main() {
 	webAuthn, err = webauthn.New(&webauthn.Config{
 		RPDisplayName: configuration.RPDisplayName, // Relying party display name
 		RPID:          configuration.RPID,          // Relying party id
-		RPOrigin:      fmt.Sprintf("http://%s:%s", configuration.RPID, configuration.ServerPort),
+		RPOrigin:      configuration.RPOrigin,      // Relying party origin
 	})
 
 	if err != nil {
