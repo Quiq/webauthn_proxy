@@ -158,8 +158,9 @@ func main() {
 	r.HandleFunc("/webauthn/register/get_credential_creation_options", GetCredentialCreationOptions)
 	r.HandleFunc("/webauthn/register/process_registration_attestation", ProcessRegistrationAttestation)
 
-	// All other paths are treated as references to static assets
+	// All remaining references to static assets. Add /webauthn_static/ for embedding.
 	r.Handle("/webauthn_static/", http.StripPrefix("/webauthn_static/", http.FileServer(http.Dir(configuration.StaticPath))))
+	r.Handle("/", http.FileServer(http.Dir(configuration.StaticPath)))
 
 	serverAddress := fmt.Sprintf("%s:%s", configuration.ServerAddress, configuration.ServerPort)
 	log.Println("Starting server at", serverAddress)
