@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -23,6 +24,8 @@ import (
 
 var (
 	configuration        Configuration
+	loginError           WebAuthnError
+	registrationError    WebAuthnError
 	registrations        map[string]u.User
 	sessionStoreKey      []byte
 	sessionStore         *sessions.CookieStore
@@ -72,6 +75,9 @@ func main() {
 	var err error
 	var credfile []byte
 	var credentials map[string]string
+
+	loginError = WebAuthnError{Message: "Unable to login"}
+	registrationError = WebAuthnError{Message: "Error during registration"}
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -212,14 +218,15 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 func GetCredentialRequestOptions(w http.ResponseWriter, r *http.Request) {
 	username, err := util.GetUsername(r, configuration.UsernameRegex)
 	if err != nil {
-		util.JSONResponse(w, WebAuthnError{Message: err.Error()}, http.StatusBadRequest)
+		log.Println("Error getting username", err)
+		util.JSONResponse(w, loginError, http.StatusBadRequest)
 		return
 	}
 
 	user, exists := users[username]
 	if !exists {
 		log.Printf("\nUser %s does not exist", username)
-		util.JSONResponse(w, WebAuthnError{Message: fmt.Sprintf("User %s does not exist", username)}, http.StatusBadRequest)
+		util.JSONResponse(w, loginError, http.StatusBadRequest)
 		return
 	}
 
@@ -227,7 +234,7 @@ func GetCredentialRequestOptions(w http.ResponseWriter, r *http.Request) {
 	options, sessionData, err := webAuthn.BeginLogin(user)
 	if err != nil {
 		log.Println("Error beginning the login process", err)
-		util.JSONResponse(w, WebAuthnError{Message: err.Error()}, http.StatusInternalServerError)
+		util.JSONResponse(w, loginError, http.StatusInternalServerError)
 		return
 	}
 
@@ -235,7 +242,7 @@ func GetCredentialRequestOptions(w http.ResponseWriter, r *http.Request) {
 	err = webauthnSessionStore.SaveWebauthnSession("authentication", sessionData, r, w)
 	if err != nil {
 		log.Println("Error saving Webauthn session during login", err)
-		util.JSONResponse(w, WebAuthnError{Message: err.Error()}, http.StatusInternalServerError)
+		util.JSONResponse(w, loginError, http.StatusInternalServerError)
 		return
 	}
 
@@ -248,14 +255,15 @@ func ProcessLoginAssertion(w http.ResponseWriter, r *http.Request) {
 	session, _ := sessionStore.Get(r, "webauthn-proxy-session")
 	username, err := util.GetUsername(r, configuration.UsernameRegex)
 	if err != nil {
-		util.JSONResponse(w, WebAuthnError{Message: err.Error()}, http.StatusBadRequest)
+		log.Println("Error getting username", err)
+		util.JSONResponse(w, loginError, http.StatusBadRequest)
 		return
 	}
 
 	user, exists := users[username]
 	if !exists {
 		log.Printf("\nUser %s does not exist", username)
-		util.JSONResponse(w, WebAuthnError{Message: fmt.Sprintf("User %s does not exist", username)}, http.StatusBadRequest)
+		util.JSONResponse(w, loginError, http.StatusBadRequest)
 		return
 	}
 
@@ -263,18 +271,28 @@ func ProcessLoginAssertion(w http.ResponseWriter, r *http.Request) {
 	sessionData, err := webauthnSessionStore.GetWebauthnSession("authentication", r)
 	if err != nil {
 		log.Println("Error getting Webauthn session during login", err)
-		util.JSONResponse(w, WebAuthnError{Message: err.Error()}, http.StatusBadRequest)
+		util.JSONResponse(w, loginError, http.StatusBadRequest)
 		return
 	}
 
-	_, err = webAuthn.FinishLogin(user, sessionData, r)
+	cred, err := webAuthn.FinishLogin(user, sessionData, r)
 	if err != nil {
 		log.Println("Error finishing Webauthn login", err)
-		util.JSONResponse(w, WebAuthnError{Message: err.Error()}, http.StatusBadRequest)
+		util.JSONResponse(w, loginError, http.StatusBadRequest)
 		return
 	}
 
-	// TODO: Perform additional validation of the login assertion
+	// Check for cloned authenticators
+	if cred.Authenticator.CloneWarning {
+		log.Printf("\nError. Authenticator for %s appears to be cloned, failing login", username)
+		util.JSONResponse(w, loginError, http.StatusBadRequest)
+		return
+	}
+
+	// Increment sign count on user to help avoid clones
+	// !!! For now this is okay because we only allow a user to register once.
+	// !!! In the future we will have to make sure we are updating the correct cred.
+	user.Credentials[0].Authenticator.UpdateCounter(cred.Authenticator.SignCount)
 
 	// Set user as authenticated
 	session.Values["authenticated"] = true
@@ -291,15 +309,22 @@ func ProcessLoginAssertion(w http.ResponseWriter, r *http.Request) {
 func GetCredentialCreationOptions(w http.ResponseWriter, r *http.Request) {
 	username, err := util.GetUsername(r, configuration.UsernameRegex)
 	if err != nil {
-		util.JSONResponse(w, WebAuthnError{Message: err.Error()}, http.StatusBadRequest)
+		log.Println("Error getting username", err)
+		util.JSONResponse(w, registrationError, http.StatusBadRequest)
 		return
 	}
 
+	// Currently not registering a user more than once, but we may want
+	// to allow this, so that users can use multiple authenticators.
+	// Just need to make sure the same authenticator isn't registered
+	// multiple times.
 	if _, exists := users[username]; exists {
-		util.JSONResponse(w, WebAuthnError{Message: fmt.Sprintf("User %s is already registered", username)}, http.StatusBadRequest)
+		log.Printf("\nUser %s is already registered", username)
+		util.JSONResponse(w, registrationError, http.StatusBadRequest)
 		return
 	} else if _, exists = registrations[username]; exists {
-		util.JSONResponse(w, WebAuthnError{Message: fmt.Sprintf("User %s has already begun registration", username)}, http.StatusBadRequest)
+		log.Printf("\nUser %s has already begun registration", username)
+		util.JSONResponse(w, registrationError, http.StatusBadRequest)
 		return
 	}
 
@@ -313,14 +338,14 @@ func GetCredentialCreationOptions(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Println("Error beginning Webauthn registration", err)
-		util.JSONResponse(w, WebAuthnError{Message: err.Error()}, http.StatusInternalServerError)
+		util.JSONResponse(w, registrationError, http.StatusInternalServerError)
 		return
 	}
 
 	// Store session data as marshaled JSON
 	if err = webauthnSessionStore.SaveWebauthnSession("registration", sessionData, r, w); err != nil {
 		log.Println("Error saving Webauthn session during registration", err)
-		util.JSONResponse(w, WebAuthnError{Message: err.Error()}, http.StatusInternalServerError)
+		util.JSONResponse(w, registrationError, http.StatusInternalServerError)
 		return
 	}
 
@@ -333,17 +358,18 @@ func ProcessRegistrationAttestation(w http.ResponseWriter, r *http.Request) {
 	var user u.User
 	username, err := util.GetUsername(r, configuration.UsernameRegex)
 	if err != nil {
-		util.JSONResponse(w, WebAuthnError{Message: err.Error()}, http.StatusBadRequest)
+		log.Println("Error getting username", err)
+		util.JSONResponse(w, registrationError, http.StatusBadRequest)
 		return
 	}
 
 	if _, exists := users[username]; exists {
 		log.Printf("\nUser %s is already registered", username)
-		util.JSONResponse(w, WebAuthnError{Message: fmt.Sprintf("User %s is already registered", username)}, http.StatusBadRequest)
+		util.JSONResponse(w, registrationError, http.StatusBadRequest)
 		return
 	} else if user, exists = registrations[username]; !exists {
 		log.Printf("\nUser %s has not begun registration", username)
-		util.JSONResponse(w, WebAuthnError{Message: fmt.Sprintf("User %s has not begun registration", username)}, http.StatusBadRequest)
+		util.JSONResponse(w, registrationError, http.StatusBadRequest)
 		return
 	}
 
@@ -351,17 +377,30 @@ func ProcessRegistrationAttestation(w http.ResponseWriter, r *http.Request) {
 	sessionData, err := webauthnSessionStore.GetWebauthnSession("registration", r)
 	if err != nil {
 		log.Println("Error getting Webauthn session during registration", err)
-		util.JSONResponse(w, WebAuthnError{Message: err.Error()}, http.StatusBadRequest)
+		util.JSONResponse(w, registrationError, http.StatusBadRequest)
 		return
 	}
 
 	credential, err := webAuthn.FinishRegistration(user, sessionData, r)
 	if err != nil {
 		log.Println("Error finishing Webauthn registration", err)
-		util.JSONResponse(w, WebAuthnError{Message: err.Error()}, http.StatusBadRequest)
+		util.JSONResponse(w, registrationError, http.StatusBadRequest)
 		return
 	}
 
+	// Check that the credential doesn't belong to another user
+	for _, value := range users {
+		// !!! Making the assumption that users have 1 credential for now.
+		// !!! This won't always be true, if we allow users to register
+		// !!! multiple authenticators.
+		if bytes.Compare(value.Credentials[0].ID, credential.ID) == 0 {
+			log.Printf("\nError registering credential for user %s, matching credential ID with user %s", username, value.Name)
+			util.JSONResponse(w, registrationError, http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Add the credential to the user.
 	user.AddCredential(*credential)
 
 	// Note: enabling this can be risky as it allows anyone to add themselves to the proxy.
@@ -371,14 +410,13 @@ func ProcessRegistrationAttestation(w http.ResponseWriter, r *http.Request) {
 		users[username] = user
 	}
 
+	// Marshal the user so it can be added to the credentials file
 	marshaledUser, err := u.MarshalUser(user)
 	if err != nil {
 		log.Println("Error marshalling user object", err)
-		util.JSONResponse(w, WebAuthnError{Message: err.Error()}, http.StatusBadRequest)
+		util.JSONResponse(w, registrationError, http.StatusBadRequest)
 		return
 	}
-
-	// TODO: Perform additional validation of the registration attestation
 
 	successMessage := RegistrationSuccess{
 		Message: "Registration Successful. Please share the values below with your system administrator so they can add you to the credential file:",

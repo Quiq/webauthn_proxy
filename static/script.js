@@ -81,7 +81,7 @@ let registerUser = () => {
             preformattedMessage(success.Data);
         })
         .catch(error => {
-            errorMessage(JSON.stringify(error));
+            errorMessage(error.responseJSON.Message);
         });
 };
 
@@ -117,6 +117,6 @@ let authenticateUser = () => {
             window.location.reload();
         })
         .catch(error => {
-            errorMessage(JSON.stringify(error));
+            errorMessage(error.responseJSON.Message);
         });
 };

@@ -9,6 +9,17 @@
             $(document).ready(() => {
                 if (browserCheck()) {
                     $('#loginButton').click(authenticateUser);
+
+                    // Prepopulate the username field if specified
+                    let queryString = window.location.search;
+                    let urlParams = new URLSearchParams(queryString);
+                    if (urlParams.has('default_username')) {
+                        let username = urlParams.get('default_username');
+                        $('#username').val(username);
+                    }
+
+                    // Set focus to the username field
+                    $('#username').focus();
                 }
             });
         </script>
