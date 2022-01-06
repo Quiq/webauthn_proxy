@@ -8,9 +8,12 @@
 # rpDisplayName - Relying party display name
 rpDisplayName: "Example, Inc."
 
+# rpID - Relying party ID, usually the domain the proxy and callers live under
+rpID: example.com
+
 # rpOrigin - Relying party origin, should be set to the address users will use to 
 # talk to the proxy
-rpOrigin: https://example.com
+rpOrigin: https://webauthn.example.com
 
 # serverAddress - Address for the proxy to listen on
 # Use 127.0.0.1 when running in development, 0.0.0.0 when in docker or 

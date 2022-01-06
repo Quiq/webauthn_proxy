@@ -5,11 +5,8 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
-	"net"
 	"net/http"
-	"net/url"
 	"path/filepath"
-	"strings"
 	"time"
 
 	u "github.com/Quiq/webauthn_proxy/user"
@@ -40,6 +37,7 @@ type Configuration struct {
 	EnableFullRegistration bool
 
 	RPDisplayName string // Relying party display name
+	RPID          string // Relying party ID
 	RPOrigin      string // Relying party origin
 
 	ServerAddress        string
@@ -106,19 +104,9 @@ func main() {
 		log.Fatalln("Unable to decode config file into struct.", err)
 	}
 
-	// Parse out the origin host to use as Relying party ID
-	originUrl, err := url.Parse(configuration.RPOrigin)
-	if err != nil {
-		log.Fatalln("Failed parsing RP origin: ", err)
-	}
-	rpID := originUrl.Host
-	if strings.Contains(rpID, ":") {
-		rpID, _, _ = net.SplitHostPort(rpID)
-	}
-
 	fmt.Printf("\nCredential File: %s", configuration.CredentialFile)
 	fmt.Printf("\nRelying Party Display Name: %s", configuration.RPDisplayName)
-	fmt.Printf("\nRelying Party ID: %s", rpID)
+	fmt.Printf("\nRelying Party ID: %s", configuration.RPID)
 	fmt.Printf("\nRelying Party Origin: %s", configuration.RPOrigin)
 	fmt.Printf("\nEnable Full Registration: %v", configuration.EnableFullRegistration)
 	fmt.Printf("\nServer Address: %s", configuration.ServerAddress)
@@ -147,7 +135,7 @@ func main() {
 
 	webAuthn, err = webauthn.New(&webauthn.Config{
 		RPDisplayName: configuration.RPDisplayName, // Relying party display name
-		RPID:          rpID,                        // Relying party ID
+		RPID:          configuration.RPID,          // Relying party ID
 		RPOrigin:      configuration.RPOrigin,      // Relying party origin
 	})
 

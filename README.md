@@ -105,6 +105,7 @@ location /webauthn_static/ {
 | credentialFile | Path and filename for where credentials are stored | /opt/webauthn_proxy/credentials.yml |
 | enableFullRegistration | When set to **_true_**, users can authenticate immediately after registering. Useful for testing, but generally not safe for production. | false |
 | rpDisplayName | Display name of relying party | _<None>_ |
+| rpID | ID of the relying party | _<None>_ |
 | rpOrigin | Full origin used for accessing the proxy, including port if not 80/443, e.g. http://example.com:8080 | _<None>_ |
 | serverAddress | Address the proxy server should listen on (usually 127.0.0.1 or 0.0.0.0) | 127.0.0.1 |
 | serverPort | Port the proxy server should listen on | 8080 |
