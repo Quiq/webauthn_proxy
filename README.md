@@ -73,7 +73,6 @@ location / {
                 local url = "http://127.0.0.1:8080/webauthn/auth"
                 local res, err = h:request_uri(url, {method = "GET", headers = ngx.req.get_headers()})
                 if err or not res or res.status ~= 200 then
-                        ngx.log(ngx.ERR, "Webauthn status: " .. res.status .. " ... redirecting.")
                         ngx.redirect("/webauthn/login?redirect_url=" .. ngx.var.request_uri)
                         ngx.exit(ngx.HTTP_OK)
                 end
