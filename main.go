@@ -43,10 +43,11 @@ type Configuration struct {
 	RPID          string // Relying party ID
 	RPOrigin      string // Relying party origin
 
-	ServerAddress        string
-	ServerPort           string
-	SessionLengthSeconds int
-	StaticPath           string
+	ServerAddress             string
+	ServerPort                string
+	SessionSoftTimeoutSeconds int
+	SessionHardTimeoutSeconds int
+	StaticPath                string
 
 	UsernameRegex string
 }
@@ -95,7 +96,8 @@ func main() {
 	viper.SetDefault("enablefullregistration", false)
 	viper.SetDefault("serveraddress", "127.0.0.1")
 	viper.SetDefault("serverport", "8080")
-	viper.SetDefault("sessionlengthseconds", 28800)
+	viper.SetDefault("sessionsofttimeoutseconds", 28800)
+	viper.SetDefault("sessionhardtimeoutseconds", 86400)
 	viper.SetDefault("staticpath", "/static/")
 	viper.SetDefault("usernameregex", "^.*$")
 
@@ -110,6 +112,14 @@ func main() {
 		log.Fatalln("Unable to decode config file into struct.", err)
 	}
 
+	if configuration.SessionSoftTimeoutSeconds < 1 {
+		log.Fatalf("\nInvalid session soft timeout of %d, must be > 0", configuration.SessionSoftTimeoutSeconds)
+	} else if configuration.SessionHardTimeoutSeconds < 1 {
+		log.Fatalf("\nInvalid session hard timeout of %d, must be > 0", configuration.SessionHardTimeoutSeconds)
+	} else if configuration.SessionHardTimeoutSeconds < configuration.SessionSoftTimeoutSeconds {
+		log.Fatalln("Invalid session hard timeout, must be > session soft timeout")
+	}
+
 	fmt.Printf("\nCredential File: %s", configuration.CredentialFile)
 	fmt.Printf("\nRelying Party Display Name: %s", configuration.RPDisplayName)
 	fmt.Printf("\nRelying Party ID: %s", configuration.RPID)
@@ -117,7 +127,8 @@ func main() {
 	fmt.Printf("\nEnable Full Registration: %v", configuration.EnableFullRegistration)
 	fmt.Printf("\nServer Address: %s", configuration.ServerAddress)
 	fmt.Printf("\nServer Port: %s", configuration.ServerPort)
-	fmt.Printf("\nSession Length: %d", configuration.SessionLengthSeconds)
+	fmt.Printf("\nSession Soft Timeout: %d", configuration.SessionSoftTimeoutSeconds)
+	fmt.Printf("\nSession Hard Tiemout: %d", configuration.SessionHardTimeoutSeconds)
 	fmt.Printf("\nStatic Path: %s", configuration.StaticPath)
 	fmt.Printf("\nUsername Regex: %s\n\n", configuration.UsernameRegex)
 
@@ -160,7 +171,7 @@ func main() {
 	// Sessions stored for a configurable length of time
 	sessionStore.Options = &sessions.Options{
 		Path:     "/",
-		MaxAge:   configuration.SessionLengthSeconds,
+		MaxAge:   configuration.SessionSoftTimeoutSeconds,
 		HttpOnly: true,
 	}
 
@@ -190,8 +201,16 @@ func GetUserAuth(w http.ResponseWriter, r *http.Request) {
 	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
 		util.JSONResponse(w, AuthenticationFailure{Message: "Unauthenticated"}, http.StatusUnauthorized)
 		return
+	} else if time.Now().Unix()-session.Values["authenticationtime"].(int64) >= int64(configuration.SessionHardTimeoutSeconds) {
+		// Invalidate the session, session has exceeded the hard limit
+		session.Options = &sessions.Options{
+			MaxAge: -1,
+		}
+		session.Save(r, w)
+		util.JSONResponse(w, AuthenticationFailure{Message: "Unauthenticated"}, http.StatusUnauthorized)
+		return
 	} else {
-		// Update the session to reset the timeout
+		// Update the session to reset the soft timeout
 		session.Save(r, w)
 
 		util.JSONResponse(w, AuthenticationSuccess{Message: "OK"}, http.StatusOK)
@@ -299,6 +318,7 @@ func ProcessLoginAssertion(w http.ResponseWriter, r *http.Request) {
 
 	// Set user as authenticated
 	session.Values["authenticated"] = true
+	session.Values["authenticationtime"] = time.Now().Unix()
 	session.Save(r, w)
 
 	successMessage := AuthenticationSuccess{

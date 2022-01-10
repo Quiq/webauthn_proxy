@@ -106,11 +106,12 @@ location /webauthn_static/ {
 | credentialFile | Path and filename for where credentials are stored | /opt/webauthn_proxy/credentials.yml |
 | enableFullRegistration | When set to **_true_**, users can authenticate immediately after registering. Useful for testing, but generally not safe for production. | false |
 | rpDisplayName | Display name of relying party | _<None>_ |
-| rpID | ID of the relying party | _<None>_ |
+| rpID | ID of the relying party, usually the domain the proxy and callers live under | _<None>_ |
 | rpOrigin | Full origin used for accessing the proxy, including port if not 80/443, e.g. http://service.example.com:8080 | _<None>_ |
 | serverAddress | Address the proxy server should listen on (usually 127.0.0.1 or 0.0.0.0) | 127.0.0.1 |
 | serverPort | Port the proxy server should listen on | 8080 |
-| sessionLengthSeconds | Length of time logins are valid for, in seconds | 28800 (8 hours) |
+| sessionSoftTimeoutSeconds | Length of time logins are valid for, in seconds | 28800 (8 hours) |
+| sessionHardTimeoutSeconds | Max length of logged in session, as calls to /webauthn/auth reset the session timeout | 86400 (24 hours) |
 | staticPath | Path on disk to static assets | /static/ |
 | usernameRegex | Regex for validating usernames | ^.*$ |
 

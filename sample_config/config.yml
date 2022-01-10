@@ -1,35 +1,36 @@
-# credentialFile - Path to credentials file
+# credentialFile - Path and filename for where credentials are stored
 ## credentialFile: /opt/webauthn_proxy/credentials.yml
 
-# enableFullRegistration - Enable registered users to automatically authenticate
-# without copying their credential to the credentials file and rebooting 
+# enableFullRegistration - When set to 'true', users can authenticate immediately 
+# after registering. Useful for testing, but generally not safe for production.
 ## enableFullRegistration: false
 
-# rpDisplayName - Relying party display name
+# rpDisplayName - Display name of relying party
 rpDisplayName: "Example, Inc."
 
-# rpID - Relying party ID, usually the domain the proxy and callers live under
+# rpID - ID of the relying party, usually the domain the proxy and callers live under
 rpID: example.com
 
-# rpOrigin - Relying party origin, should be set to the origin of the service secured
-# by the proxy. 
+# rpOrigin - Full origin used for accessing the proxy, including port 
+# if not 80/443, e.g. http://service.example.com:8080
 rpOrigin: https://service.example.com
 
-# serverAddress - Address for the proxy to listen on
-# Use 127.0.0.1 when running in development, 0.0.0.0 when in docker or 
-# to expose the service to external callers
+# serverAddress - Address the proxy server should listen on (usually 127.0.0.1 or 0.0.0.0)
 ## serverAddress: 127.0.0.1 
 
-# serverPort - Port for the proxy to listen on
+# serverPort - Port the proxy server should listen on
 ## serverPort: 8080
 
-# sessionLengthSeconds - Time in seconds that user will be authenticated for
-## sessionLengthSeconds: 3600
+# sessionSoftTimeoutSeconds - Length of time logins are valid for, in seconds
+## sessionSoftTimeoutSeconds: 28800
 
-# staticPath - Path to static assets
+# sessionHardTimeoutSeconds - Max length of logged in session, as calls to /webauthn/auth reset the session timeout
+## sessionHardTimeoutSeconds: 86400
+
+# staticPath - Path on disk to static assets
 ## staticPath: /static/
 
-# usernameRegex - Regex used to validate usernames
+# usernameRegex - Regex for validating usernames
 # The following regex will allow usernames with uppercase, lowercase, digits, or "-.@" ...
 # Basically, email addresses
 ## usernameRegex: ^[A-Za-z0-9\-\_\.\@]+$
