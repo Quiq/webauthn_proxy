@@ -57,7 +57,6 @@ location / {
 # WebAuthn Proxy.
 location /webauthn/ {
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
         proxy_set_header Host $host;
         proxy_pass http://127.0.0.1:8080;
 }
@@ -102,7 +101,6 @@ location /oauth2/ {
 # WebAuthn Proxy.
 location /webauthn/ {
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
         proxy_set_header Host $host;
         proxy_pass http://127.0.0.1:8080;
 }
