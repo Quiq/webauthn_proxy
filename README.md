@@ -1,3 +1,5 @@
+![WebAuthn Proxy Login Page](/assets/images/screengrab.png)
+
 ## Goals
 The goal of this project is to create a standalone proxy to enforce Webauthn authentication. It can be inserted in front of sensitive services or even chained with other proxies (e.g. OAuth, MFA) to enable a layered security model. 
 
@@ -17,7 +19,7 @@ _**Important Note**_: One of the most critical properties in the config is `enab
 
 _**Other Important Note**_: The `rpID` and `rpOrigins` configuration options are critical to how Webauthn works. `rpID` should be set to the domain that your services operate under, for example if you want to secure your CI system and code repositories at _https://ci.example.com_ and _https://code.example.com_, you should set `rpID` to simply `example.com`. This will allow both sites to share the same set of credentials. If `rpOrigins` is left empty, the proxy will dynamically allow requests to any origin, otherwise it will only allow those specific origins.
 
-Once the proxy is started you can register a user by going to _http://localhost:8080/register.html_ (assuming you used 8080 as the server port). Enter a username and then click _Register_. You will be prompted to authenticate, which is a browser dependent operation (see below). After following the prompts, you will be given a username and credential combination to add to your credentials file. You should add this entry and then restart the proxy, there is no way to hot-reload it at the moment.
+Once the proxy is started you can register a user by going to _http://localhost:8080/webauthn/register_ (assuming you used 8080 as the server port). Enter a username and then click _Register_. You will be prompted to authenticate, which is a browser dependent operation (see below). After following the prompts, you will be given a username and credential combination to add to your credentials file. You should add this entry and then restart the proxy, there is no way to hot-reload it at the moment.
 
 You can configure this as an authentication proxy using the sample configuration for NGinx or Openresty below. Other proxies and webservers haven't been tested currently but they should work and if you have done so please feel free to open a pull request to this document with details.
 
