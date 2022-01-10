@@ -11,9 +11,9 @@ rpDisplayName: "Example, Inc."
 # rpID - ID of the relying party, usually the domain the proxy and callers live under
 rpID: example.com
 
-# rpOrigin - Full origin used for accessing the proxy, including port 
-# if not 80/443, e.g. http://service.example.com:8080
-rpOrigin: https://service.example.com
+# rpOrigins - Array of full origins used for accessing the proxy, including port if not 80/443
+rpOrigins:
+  - https://service.example.com
 
 # serverAddress - Address the proxy server should listen on (usually 127.0.0.1 or 0.0.0.0)
 ## serverAddress: 127.0.0.1 

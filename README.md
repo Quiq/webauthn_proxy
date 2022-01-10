@@ -15,7 +15,7 @@ You will also need a `credentials.yml` file, which is a simple YAML file with ke
 
 _**Important Note**_: One of the most critical properties in the config is `enableFullRegistration`. By setting this value to `true`, a user will be able to authenticate immediately after they have registered without any intervention from a system administrator, until the proxy is restarted. This is useful for testing, but we highly recommend you set this property to `false` in production.
 
-_**Other Important Note**_: The `rpID` and `rpOrigin` configuration options are critical to how Webauthn works. `rpID` should be set to the domain that your services operate under, for example if you want to secure your CI system and code repositories at _https://ci.example.com_ and _https://code.example.com_, you should set `rpID` to simply `example.com`. This will allow both sites to share the same set of credentials. However, currently the [webauthn library](https://github.com/duo-labs/webauthn) that we use only allows for one origin per deployment, so you would need to stand up two instances of the proxy, one with `rpOrigin` set to _https://ci.example.com_ and one with _https://code.example.com_.
+_**Other Important Note**_: The `rpID` and `rpOrigins` configuration options are critical to how Webauthn works. `rpID` should be set to the domain that your services operate under, for example if you want to secure your CI system and code repositories at _https://ci.example.com_ and _https://code.example.com_, you should set `rpID` to simply `example.com`. This will allow both sites to share the same set of credentials. If `rpOrigins` is left empty, the proxy will dynamically allow requests to any origin, otherwise it will only allow those specific origins.
 
 Once the proxy is started you can register a user by going to _http://localhost:8080/register.html_ (assuming you used 8080 as the server port). Enter a username and then click _Register_. You will be prompted to authenticate, which is a browser dependent operation (see below). After following the prompts, you will be given a username and credential combination to add to your credentials file. You should add this entry and then restart the proxy, there is no way to hot-reload it at the moment.
 
@@ -107,7 +107,7 @@ location /webauthn_static/ {
 | enableFullRegistration | When set to **_true_**, users can authenticate immediately after registering. Useful for testing, but generally not safe for production. | false |
 | rpDisplayName | Display name of relying party | _<None>_ |
 | rpID | ID of the relying party, usually the domain the proxy and callers live under | _<None>_ |
-| rpOrigin | Full origin used for accessing the proxy, including port if not 80/443, e.g. http://service.example.com:8080 | _<None>_ |
+| rpOrigins | Array of full origins used for accessing the proxy, including port if not 80/443, e.g. http://service.example.com:8080. | All Origins |
 | serverAddress | Address the proxy server should listen on (usually 127.0.0.1 or 0.0.0.0) | 127.0.0.1 |
 | serverPort | Port the proxy server should listen on | 8080 |
 | sessionSoftTimeoutSeconds | Length of time logins are valid for, in seconds | 28800 (8 hours) |
