@@ -524,6 +524,7 @@ func checkOrigin(r *http.Request) (*webauthn.WebAuthn, *session.Store, error) {
 	if !dynamicOrigins {
 		return nil, nil, fmt.Errorf("Request origin not valid: %s", origin)
 	} else {
+		log.Printf("\nAdding new dynamic origin: %s", origin)
 		webAuthn, err = webauthn.New(&webauthn.Config{
 			RPDisplayName: configuration.RPDisplayName, // Relying party display name
 			RPID:          configuration.RPID,          // Relying party ID

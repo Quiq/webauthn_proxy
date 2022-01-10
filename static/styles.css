@@ -1,3 +1,13 @@
+a {
+    color: blue;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+button {
+    cursor: pointer;
+}
+
 #form {
     text-align: center;
 }

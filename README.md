@@ -53,7 +53,10 @@ location / {
 }
 
 # WebAuthn Proxy.
-location = /webauthn/ {
+location /webauthn/ {
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header Host $host;
         proxy_pass http://127.0.0.1:8080;
 }
 location /webauthn_static/ {
@@ -65,6 +68,9 @@ location /webauthn_static/ {
 ```
 location / {
         auth_request /oauth2/auth;
+
+        # Get the email from oauth2 proxy to prepolulate with the redirect below
+        auth_request_set $email $upstream_http_x_auth_request_email;
         error_page 401 = /oauth2/start?rd=$uri;  
         access_by_lua_block {
                 local http = require "resty.http"
@@ -73,7 +79,8 @@ location / {
                 local url = "http://127.0.0.1:8080/webauthn/auth"
                 local res, err = h:request_uri(url, {method = "GET", headers = ngx.req.get_headers()})
                 if err or not res or res.status ~= 200 then
-                        ngx.redirect("/webauthn/login?redirect_url=" .. ngx.var.request_uri)
+                        # Redirect to webauthn login, with email as the default username
+                        ngx.redirect("/webauthn/login?redirect_url=" .. ngx.var.request_uri .. "&default_username=" .. ngx.var.email)
                         ngx.exit(ngx.HTTP_OK)
                 end
         }  
@@ -91,7 +98,10 @@ location /oauth2/ {
 }
 
 # WebAuthn Proxy.
-location = /webauthn/ {
+location /webauthn/ {
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header Host $host;
         proxy_pass http://127.0.0.1:8080;
 }
 location /webauthn_static/ {

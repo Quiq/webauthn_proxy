@@ -6,6 +6,14 @@
         <script src="/webauthn_static/jquery-3.6.0.min.js"></script>
         <script src="/webauthn_static/script.js"></script>
         <script>
+            const registerLinkClick = (defaultUsername) => {
+                let uri = "/webauthn/register";
+                if (defaultUsername) {
+                    uri = uri + `?default_username=${defaultUsername}`;
+                }
+                window.location.href = uri;
+            };
+
             $(document).ready(() => {
                 if (browserCheck()) {
                     $('#loginButton').click(authenticateUser);
@@ -13,13 +21,17 @@
                     // Prepopulate the username field if specified
                     let queryString = window.location.search;
                     let urlParams = new URLSearchParams(queryString);
+                    let username = null;
                     if (urlParams.has('default_username')) {
-                        let username = urlParams.get('default_username');
+                        username = urlParams.get('default_username');
                         $('#username').val(username);
                     }
 
                     // Set focus to the username field
                     $('#username').focus();
+
+                    // Click handler for the "register" link
+                    $('#registerLink').click(registerLinkClick.bind(registerLinkClick, username));
                 }
             });
         </script>
@@ -37,6 +49,8 @@
                     <td><button id="loginButton">Login</button></td>
                 </tr>
             </table>
+            <br />
+            New User? <a id="registerLink">Register</a>
         </div>
     </body>
 </html>
