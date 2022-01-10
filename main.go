@@ -95,7 +95,7 @@ func main() {
 	viper.SetDefault("enablefullregistration", false)
 	viper.SetDefault("serveraddress", "127.0.0.1")
 	viper.SetDefault("serverport", "8080")
-	viper.SetDefault("sessionlengthseconds", 86400)
+	viper.SetDefault("sessionlengthseconds", 28800)
 	viper.SetDefault("staticpath", "/static/")
 	viper.SetDefault("usernameregex", "^.*$")
 
@@ -191,6 +191,9 @@ func GetUserAuth(w http.ResponseWriter, r *http.Request) {
 		util.JSONResponse(w, AuthenticationFailure{Message: "Unauthenticated"}, http.StatusUnauthorized)
 		return
 	} else {
+		// Update the session to reset the timeout
+		session.Save(r, w)
+
 		util.JSONResponse(w, AuthenticationSuccess{Message: "OK"}, http.StatusOK)
 		return
 	}

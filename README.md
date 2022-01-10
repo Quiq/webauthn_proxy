@@ -110,7 +110,7 @@ location /webauthn_static/ {
 | rpOrigin | Full origin used for accessing the proxy, including port if not 80/443, e.g. http://service.example.com:8080 | _<None>_ |
 | serverAddress | Address the proxy server should listen on (usually 127.0.0.1 or 0.0.0.0) | 127.0.0.1 |
 | serverPort | Port the proxy server should listen on | 8080 |
-| sessionLengthSeconds | Length of time logins are valid for, in seconds | 86400 |
+| sessionLengthSeconds | Length of time logins are valid for, in seconds | 28800 (8 hours) |
 | staticPath | Path on disk to static assets | /static/ |
 | usernameRegex | Regex for validating usernames | ^.*$ |
 
