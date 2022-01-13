@@ -127,6 +127,7 @@ location /webauthn_static/ {
 
 
 ## Thanks! 
+- Duo Labs: https://duo.com/labs
 - Herbie Bolimovsky: https://www.herbie.dev/blog/webauthn-basic-web-client-server/
 - Paul Hankin / icza:  https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-go
 

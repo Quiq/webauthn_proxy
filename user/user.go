@@ -12,7 +12,6 @@ import (
 	"github.com/duo-labs/webauthn/webauthn"
 )
 
-// User represents the user model
 type User struct {
 	ID          uint64
 	Name        string
@@ -20,17 +19,16 @@ type User struct {
 	Credentials []webauthn.Credential
 }
 
-// NewUser creates and returns a new User
 func NewUser(name string) *User {
 	user := &User{}
 	user.ID = randomUint64()
 	user.Name = name
 	user.DisplayName = name
-	// user.credentials = []webauthn.Credential{}
 
 	return user
 }
 
+// Return user credential by ID
 func (u User) CredentialById(id []byte) (*webauthn.Credential, error) {
 	var result *webauthn.Credential
 	for _, cred := range u.Credentials {
@@ -72,7 +70,7 @@ func UnmarshalUser(user string) (*User, error) {
 	return unmarshaledUser, nil
 }
 
-// Set user registration options, such as excluding already registered credentials
+// Set user registration options, such as excluding registered credentials
 func (u User) UserRegistrationOptions(credCreateOptions *protocol.PublicKeyCredentialCreationOptions) {
 	credExcludeList := []protocol.CredentialDescriptor{}
 	for _, cred := range u.Credentials {
@@ -86,7 +84,6 @@ func (u User) UserRegistrationOptions(credCreateOptions *protocol.PublicKeyCrede
 	credCreateOptions.CredentialExcludeList = credExcludeList
 }
 
-// WebAuthnID returns the user's ID
 func (u User) WebAuthnID() []byte {
 	buf := make([]byte, binary.MaxVarintLen64)
 	binary.PutUvarint(buf, uint64(u.ID))
@@ -98,22 +95,18 @@ func (u User) WebAuthnIcon() string {
 	return ""
 }
 
-// WebAuthnName returns the user's username
 func (u User) WebAuthnName() string {
 	return u.Name
 }
 
-// WebAuthnDisplayName returns the user's display name
 func (u User) WebAuthnDisplayName() string {
 	return u.DisplayName
 }
 
-// AddCredential associates the credential to the user
 func (u *User) AddCredential(cred webauthn.Credential) {
 	u.Credentials = append(u.Credentials, cred)
 }
 
-// WebAuthnCredentials returns credentials owned by the user
 func (u User) WebAuthnCredentials() []webauthn.Credential {
 	return u.Credentials
 }

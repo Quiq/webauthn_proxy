@@ -4,7 +4,6 @@ go 1.17
 
 require (
 	github.com/duo-labs/webauthn v0.0.0-20211221191814-a22482edaa3b
-	github.com/duo-labs/webauthn.io v0.0.0-20200929144140-c031a3e0f95d
 	github.com/gorilla/sessions v1.2.0
 	github.com/spf13/viper v1.10.1
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
