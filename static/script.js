@@ -66,7 +66,12 @@ let registerUser = () => {
         .then(credCreateOptions => {
             credCreateOptions.publicKey.challenge = bufferDecode(credCreateOptions.publicKey.challenge);
             credCreateOptions.publicKey.user.id = bufferDecode(credCreateOptions.publicKey.user.id);
-          
+            if (credCreateOptions.publicKey.excludeCredentials) {
+                for (cred of credCreateOptions.publicKey.excludeCredentials) {
+                    cred.id = bufferDecode(cred.id);
+                }
+            }
+
             return navigator.credentials.create({
                 publicKey: credCreateOptions.publicKey
             });

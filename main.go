@@ -110,7 +110,7 @@ func main() {
 	log.Printf("Reading config file, %s/config.yml", configpath)
 	viper.AddConfigPath(configpath)
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("\nError reading config file %s/config.yml. %s", configpath, err.Error())
+		log.Fatalf("Error reading config file %s/config.yml. %s", configpath, err.Error())
 	}
 
 	if err = viper.Unmarshal(&configuration); err != nil {
@@ -118,9 +118,9 @@ func main() {
 	}
 
 	if configuration.SessionSoftTimeoutSeconds < 1 {
-		log.Fatalf("\nInvalid session soft timeout of %d, must be > 0", configuration.SessionSoftTimeoutSeconds)
+		log.Fatalf("Invalid session soft timeout of %d, must be > 0", configuration.SessionSoftTimeoutSeconds)
 	} else if configuration.SessionHardTimeoutSeconds < 1 {
-		log.Fatalf("\nInvalid session hard timeout of %d, must be > 0", configuration.SessionHardTimeoutSeconds)
+		log.Fatalf("Invalid session hard timeout of %d, must be > 0", configuration.SessionHardTimeoutSeconds)
 	} else if configuration.SessionHardTimeoutSeconds < configuration.SessionSoftTimeoutSeconds {
 		log.Fatalln("Invalid session hard timeout, must be > session soft timeout")
 	}
@@ -138,11 +138,11 @@ func main() {
 	fmt.Printf("\nUsername Regex: %s\n\n", configuration.UsernameRegex)
 
 	if credfile, err = ioutil.ReadFile(configuration.CredentialFile); err != nil {
-		log.Fatalf("\nUnable to read credential file %s %v", configuration.CredentialFile, err)
+		log.Fatalf("Unable to read credential file %s %v", configuration.CredentialFile, err)
 	}
 
 	if err = yaml.Unmarshal(credfile, &credentials); err != nil {
-		log.Fatalf("\nUnable to parse YAML credential file %s %v", configuration.CredentialFile, err)
+		log.Fatalf("Unable to parse YAML credential file %s %v", configuration.CredentialFile, err)
 	}
 
 	// Unmarshall credentials map to users
@@ -264,7 +264,7 @@ func GetCredentialRequestOptions(w http.ResponseWriter, r *http.Request) {
 
 	user, exists := users[username]
 	if !exists {
-		log.Printf("\nUser %s does not exist", username)
+		log.Printf("User %s does not exist", username)
 		util.JSONResponse(w, loginError, http.StatusBadRequest)
 		return
 	}
@@ -308,7 +308,7 @@ func ProcessLoginAssertion(w http.ResponseWriter, r *http.Request) {
 
 	user, exists := users[username]
 	if !exists {
-		log.Printf("\nUser %s does not exist", username)
+		log.Printf("User %s does not exist", username)
 		util.JSONResponse(w, loginError, http.StatusBadRequest)
 		return
 	}
@@ -337,15 +337,19 @@ func ProcessLoginAssertion(w http.ResponseWriter, r *http.Request) {
 
 	// Check for cloned authenticators
 	if cred.Authenticator.CloneWarning {
-		log.Printf("\nError. Authenticator for %s appears to be cloned, failing login", username)
+		log.Printf("Error. Authenticator for %s appears to be cloned, failing login", username)
 		util.JSONResponse(w, loginError, http.StatusBadRequest)
 		return
 	}
 
-	// Increment sign count on user to help avoid clones
-	// !!! For now this is okay because we only allow a user to register once.
-	// !!! In the future we will have to make sure we are updating the correct cred.
-	user.Credentials[0].Authenticator.UpdateCounter(cred.Authenticator.SignCount)
+	// Increment sign counter on user to help avoid clones
+	if userCredential, err := user.CredentialById(cred.ID); err != nil {
+		log.Println("Error incrementing sign counter on user authenticator", err)
+		util.JSONResponse(w, loginError, http.StatusBadRequest)
+		return
+	} else {
+		userCredential.Authenticator.UpdateCounter(cred.Authenticator.SignCount)
+	}
 
 	// Set user as authenticated
 	session.Values["authenticated"] = true
@@ -368,18 +372,16 @@ func GetCredentialCreationOptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Currently not registering a user more than once, but we may want
-	// to allow this, so that users can use multiple authenticators.
-	// Just need to make sure the same authenticator isn't registered
-	// multiple times.
-	if _, exists := users[username]; exists {
-		log.Printf("\nUser %s is already registered", username)
-		util.JSONResponse(w, registrationError, http.StatusBadRequest)
-		return
-	} else if _, exists = registrations[username]; exists {
-		log.Printf("\nUser %s has already begun registration", username)
-		util.JSONResponse(w, registrationError, http.StatusBadRequest)
-		return
+	// We allow a user to register multiple time with different authenticators.
+	// First check if they are an existing user
+	user, exists := users[username]
+	if !exists {
+		// Not found, see if they have registered previously
+		if user, exists = registrations[username]; !exists {
+			// Create a new user
+			user = *u.NewUser(username)
+			registrations[username] = user
+		}
 	}
 
 	webAuthn, webAuthnSessionStore, err := checkOrigin(r)
@@ -389,12 +391,10 @@ func GetCredentialCreationOptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := u.NewUser(username)
-	registrations[username] = *user
-
-	// Generate PublicKeyCredentialCreationOptions, session data
+	// Generate PublicKeyCredentialCreationOptions, session data}
 	options, sessionData, err := webAuthn.BeginRegistration(
 		user,
+		user.UserRegistrationOptions,
 	)
 
 	if err != nil {
@@ -424,14 +424,17 @@ func ProcessRegistrationAttestation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, exists := users[username]; exists {
-		log.Printf("\nUser %s is already registered", username)
-		util.JSONResponse(w, registrationError, http.StatusBadRequest)
-		return
-	} else if user, exists = registrations[username]; !exists {
-		log.Printf("\nUser %s has not begun registration", username)
-		util.JSONResponse(w, registrationError, http.StatusBadRequest)
-		return
+	// First check if they are an existing user
+	user, exists := users[username]
+	if !exists {
+		// Not found, check the registrants pool
+		if user, exists = registrations[username]; !exists {
+			// Somethings wrong here. We made it here without the registrant going
+			// through GetCredentialCreationOptions. Fail this request.
+			log.Printf("Registrant %s skipped GetCredentialCreationOptions step, failing registration", username)
+			util.JSONResponse(w, registrationError, http.StatusBadRequest)
+			return
+		}
 	}
 
 	webAuthn, webAuthnSessionStore, err := checkOrigin(r)
@@ -456,15 +459,23 @@ func ProcessRegistrationAttestation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check that the credential doesn't belong to another user
-	for _, value := range users {
-		// !!! Making the assumption that users have 1 credential for now.
-		// !!! This won't always be true, if we allow users to register
-		// !!! multiple authenticators.
-		if bytes.Compare(value.Credentials[0].ID, credential.ID) == 0 {
-			log.Printf("\nError registering credential for user %s, matching credential ID with user %s", username, value.Name)
-			util.JSONResponse(w, registrationError, http.StatusBadRequest)
-			return
+	// Check that the credential doesn't belong to another user or registrant
+	for _, u := range users {
+		for _, c := range u.Credentials {
+			if bytes.Compare(c.ID, credential.ID) == 0 {
+				log.Printf("Error registering credential for user %s, matching credential ID with user %s", username, u.Name)
+				util.JSONResponse(w, registrationError, http.StatusBadRequest)
+				return
+			}
+		}
+	}
+	for _, r := range registrations {
+		for _, c := range r.Credentials {
+			if bytes.Compare(c.ID, credential.ID) == 0 {
+				log.Printf("Error registering credential for user %s, matching credential ID with registrant %s", username, r.Name)
+				util.JSONResponse(w, registrationError, http.StatusBadRequest)
+				return
+			}
 		}
 	}
 
@@ -476,10 +487,11 @@ func ProcessRegistrationAttestation(w http.ResponseWriter, r *http.Request) {
 	// some other form of authentication)
 	if configuration.EnableFullRegistration {
 		users[username] = user
+		delete(users, username)
 	}
 
 	// Marshal the user so it can be added to the credentials file
-	marshaledUser, err := u.MarshalUser(user)
+	marshaledUser, err := user.Marshal()
 	if err != nil {
 		log.Println("Error marshalling user object", err)
 		util.JSONResponse(w, registrationError, http.StatusBadRequest)
@@ -524,7 +536,7 @@ func checkOrigin(r *http.Request) (*webauthn.WebAuthn, *session.Store, error) {
 	if !dynamicOrigins {
 		return nil, nil, fmt.Errorf("Request origin not valid: %s", origin)
 	} else {
-		log.Printf("\nAdding new dynamic origin: %s", origin)
+		log.Printf("Adding new dynamic origin: %s", origin)
 		webAuthn, err = webauthn.New(&webauthn.Config{
 			RPDisplayName: configuration.RPDisplayName, // Relying party display name
 			RPID:          configuration.RPID,          // Relying party ID
