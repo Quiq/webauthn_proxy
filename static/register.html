@@ -18,6 +18,16 @@
                         $('#username').val(username);
                     }
 
+                    // Set up copy-to-clipboard button
+                    $('#copyButton').click(() => {
+                        var preformattedMessagesArea = $('#preformattedMessages');
+                        preformattedMessagesArea.select();
+                        navigator.clipboard.writeText(preformattedMessagesArea.val());
+
+                        // "Flash" it to indicate that the text was copied
+                        preformattedMessagesArea.fadeOut(200).fadeIn(200);
+                    });
+
                     // Set focus to the username field
                     $('#username').focus();
                 }
@@ -38,7 +48,10 @@
                 </tr>
             </table>
             <br />
-            <textarea readonly id="preformattedMessages" rows="4" cols="100"></textarea>
+            <span>
+                <textarea readonly id="preformattedMessages" rows="4" cols="100"></textarea>
+                <input type="image" id="copyButton" src="/webauthn_static/clipboard.png" />
+            </span>
         </div>
     </body>
 </html>

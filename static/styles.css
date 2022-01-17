@@ -29,3 +29,9 @@ button {
     font-family: monospace;
     /* white-space: pre;*/
 }
+
+#copyButton {
+    height: 30px;
+    width: 35px;
+    vertical-align: top;
+}
