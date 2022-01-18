@@ -1,6 +1,6 @@
-![WebAuthn Proxy Login Page](/assets/images/screengrab.png)
+![WebAuthn Proxy Login Page](/assets/images/login.gif)
 
-A standalone proxy to enforce Webauthn authentication. It can be inserted in front of sensitive services or even chained with other proxies (e.g. OAuth, MFA) to enable a layered security model. 
+A standalone reverse-proxy to enforce Webauthn authentication. It can be inserted in front of sensitive services or even chained with other proxies (e.g. OAuth, MFA) to enable a layered security model.
 
 Webauthn is a passwordless, public key authentication mechanism that allows the use of hardware-based authenticators such as Yubikey, Apple Touch ID or Windows Hello. You can learn more about Webauthn [here](https://webauthn.guide/). 
 
@@ -9,23 +9,25 @@ We specifically built this proxy to fit into our ecosystem and we hope that it m
 
 
 ## Getting Started
-First thing you will need to do is build the project. See instructions below for building the Go code directly, or using Docker.
+First thing you will need to do is build the project. See instructions [below](#building) for building the Go code directly, or using Docker.
 
-Next, copy the `config.yml` file from the `sample_config` directory and modify it to meet your needs. By default the proxy will look for this file in `/opt/webauthn_proxy` but you can override this by setting the `WEBAUTHN_PROXY_CONFIGPATH` environment variable to the directory where you've stored the file. 
+Next, copy the `config.yml` file from the `sample_config` directory and modify it to meet your needs. By default the proxy will look for this file in `/opt/webauthn_proxy` but you can override this by setting the `WEBAUTHN_PROXY_CONFIGPATH` environment variable to the directory where you've stored the file.
 
 You will also need a `credentials.yml` file, which is a simple YAML file with key-value pairs of username to credential. The credential is a base64 encoded JSON object which is output during the registration process. You can start with an empty credentials file until you've registered your first user, the path to this file is one of the values in `config.yml`. 
 
-_**Important Note**_: One of the most critical properties in the config is `testMode`. By setting this value to `true`, a user will be able to authenticate immediately after they have registered without any intervention from a system administrator, until the proxy is restarted. This is useful for testing, but we highly recommend you set this property to `false` in production.
+Now you can start the proxy. See instructions [below](#running) for running it directly, or using Docker. Once it's started you can register a user by going to _http://localhost:8080/webauthn/register_ (assuming you used 8080 as the server port). Enter a username and then click _Register_. You will be prompted to select an authenticator to register, which is a browser dependent operation (see below). After following the prompts, you will be given a username/credential combination. You should add this entry to the credentials file and restart the proxy.
 
-_**Other Important Note**_: The `rpID` and `rpOrigins` configuration options are critical to how Webauthn works. `rpID` should be set to the domain that your services operate under, for example if you want to secure your CI system and code repositories at _https://ci.example.com_ and _https://code.example.com_, you should set `rpID` to simply `example.com`. This will allow both sites to share the same set of credentials. If `rpOrigins` is left empty, the proxy will dynamically allow requests to any origin, otherwise it will only allow the configured origins.
+![WebAuthn Proxy Registration](/assets/images/register.gif)
 
-Once the proxy is started you can register a user by going to _http://localhost:8080/webauthn/register_ (assuming you used 8080 as the server port). Enter a username and then click _Register_. You will be prompted to authenticate, which is a browser dependent operation (see below). After following the prompts, you will be given a username and credential combination. You should add this entry to the credentials file and restart the proxy, there is no way to hot-reload it at the moment.
+After registration you can go to _http://localhost:8080/webauthn/login_ to log in. Enter the same username you registered and click _Login_. You will be prompted to provide your authenticator device. Again follow the prompts and you should be successfully authenticated.
 
-You can configure this as an authentication proxy using the sample configuration for NGinx or Openresty below. Other proxies and webservers haven't been tested currently but they should work and if you have done so please feel free to open a pull request to this document with details.
+At this point you have it running locally. To configure it to work in your environment you will need to configure your webserver or reverse-proxy to make calls to it in order to authenticate. You can use the `/webauthn/auth` endpoint to check if the caller is currently authenticated, and `/webauthn/login` (with optional `redirect_url` and `default_username` URL parameters) for the the user to login. See instructions [below](#using) for examples of configuration with NGinx and OpenResty.
 
 
 ## Supported Browsers and Authenticators
-Currently, Chrome supports Yubikey, Apple Touch ID, Android Phones via push notification, and potentially other mechanisms such as Windows Hello. Firefox only appears to support Yubikey at the current time. Other browsers have not been tested but likely will function just fine if they support Webauthn; please feel free to open a pull request to this document with your own testing details.
+Firefox and Chrome have been tested and work well, there is some differences in their supported authentication methods. You can some helpful info [here](https://webauthn.me/browser-support) and [here](https://help.okta.com/en/prod/Content/Topics/Security/mfa-webauthn.htm). Note that you can register multiple different authenticators for a single user, which can be helpful for contingencies such as lost or broken devices.
+
+Other browsers have not been tested but likely will function just fine if they support Webauthn; please feel free to open a pull request to this document with your own testing details.
 
 
 ## Building 
@@ -45,6 +47,8 @@ Currently, Chrome supports Yubikey, Apple Touch ID, Android Phones via push noti
 
 
 ## Using
+You can configure this as an authentication reverse-proxy using the sample configuration for NGinx or Openresty below. Other proxies and webservers haven't been tested currently but they should work and if you have done so please feel free to open a pull request to this document with details.
+
 #### NGinx
 ```
 location / {
@@ -111,13 +115,33 @@ location /webauthn_static/ {
 }
 ```
 
+## Important Configuration Options
+All configuration options have a sensible default value and thus can be left off except `rpID` and `rpDisplayName`, which you must provide. There are a few important options that you should be aware though:
 
-## Configuration Elements
-| Element | Description | Default |
-| ------- | ----------- | ------- |
+`rpDisplayName`: Can be anything you want, a descriptive name of the "relying party", usually organization name.
+
+`rpID`: Should be set to the domain that your services operate under, for example if you want to secure your CI system and code repositories at _https://ci.example.com_ and _https://code.example.com_, you should set `rpID` to simply `example.com`. This will allow both sites to share the same set of credentials. **Note:** Credentials created while running the proxy with one `rpID` are not usable under another.
+
+`rpOrigins`: If left empty, the proxy will dynamically allow requests to any origin, otherwise it will only allow the configured origins. For example, if you only want this proxy to support _https://ci.example.com_ and _https://code.example.com_, use the following configuration:
+```
+rpOrigins:
+  - https://ci.example.com
+  - https://code.example.com
+```
+
+Otherwise, if you wanted it to work for any service under _example.com_, you could simply leave `rpOrigins` out of your config.
+
+`serverAddress`: The address the proxy should listen on. Typically this would be _127.0.0.1_ if you are running it locally or behind another webserver or proxy, or _0.0.0.0_ if you are running in Docker or wanted to expose it directly to the world.
+
+`testMode`: By setting this value to `true`, a user will be able to authenticate immediately after they have registered without any intervention from a system administrator, until the proxy is restarted. This is useful for testing, but we highly recommend you set this property to `false` in production, otherwise users will be able to register themselves and then immediately authenticate.
+
+
+## All Configuration Options
+| Option | Description | Default |
+| ------ | ----------- | ------- |
 | credentialFile | Path and filename for where credentials are stored | /opt/webauthn_proxy/credentials.yml |
-| *rpDisplayName* | Display name of relying party | _<None>_ |
-| *rpID* | ID of the relying party, usually the domain the proxy and callers live under | _<None>_ |
+| **rpDisplayName** | Display name of relying party | _<None>_ |
+| **rpID** | ID of the relying party, usually the domain the proxy and callers live under | _<None>_ |
 | rpOrigins | Array of full origins used for accessing the proxy, including port if not 80/443, e.g. http://service.example.com:8080. | All Origins |
 | serverAddress | Address the proxy server should listen on (usually 127.0.0.1 or 0.0.0.0) | 127.0.0.1 |
 | serverPort | Port the proxy server should listen on | 8080 |
@@ -132,4 +156,3 @@ location /webauthn_static/ {
 - Duo Labs: https://duo.com/labs
 - Herbie Bolimovsky: https://www.herbie.dev/blog/webauthn-basic-web-client-server/
 - Paul Hankin / icza:  https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-go
-

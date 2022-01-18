@@ -12,7 +12,7 @@ rpID: example.com
 #  - https://service.example.com
 
 # serverAddress - Address the proxy server should listen on (usually 127.0.0.1 or 0.0.0.0)
-## serverAddress: 127.0.0.1 
+## serverAddress: 127.0.0.1
 
 # serverPort - Port the proxy server should listen on
 ## serverPort: 8080
@@ -26,7 +26,7 @@ rpID: example.com
 # staticPath - Path on disk to static assets
 ## staticPath: /static/
 
-# testMode - When set to 'true', users can authenticate immediately 
+# testMode - When set to 'true', users can authenticate immediately
 # after registering. Useful for testing, but generally not safe for production.
 ## testMode: false
 
