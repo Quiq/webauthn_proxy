@@ -7,6 +7,7 @@ Webauthn is a passwordless, public key authentication mechanism that allows the 
 
 We specifically built this proxy to fit into our ecosystem and we hope that it might be useful for other teams. Our aim was to make a Webauthn module that was configurable and manageable using standard DevOps tools (in our case Docker and Ansible) and which could be easily inserted into our existing service deployments behind a reverse proxy like NGinx/OpenResty, and chained with other similar security proxies that we use.
 
+ 
 
 ## Getting Started
 First thing you will need to do is build the project. You can use the provided dockerfile to build an image, or directly in Go using the instructions below.
@@ -23,29 +24,32 @@ Once the proxy is started you can register a user by going to _http://localhost:
 
 You can configure this as an authentication proxy using the sample configuration for NGinx or Openresty below. Other proxies and webservers haven't been tested currently but they should work and if you have done so please feel free to open a pull request to this document with details.
 
+ 
 
 ## Supported Browsers and Authenticators
 Currently, Chrome supports Yubikey, Apple Touch ID, Android Phones via push notification, and potentially other mechanisms such as Windows Hello. Firefox only supports Yubikey at the current time. Other browsers have not been tested but likely will function just fine if they support Webauthn; please feel free to open a pull request to this document with your own testing details.
 
+ 
 
 ## Building 
-### Golang
+#### Golang
 `go build -o webauthn_proxy && chmod +x webauthn_proxy`
 
-### Docker
+#### Docker
 `docker build -t webauthn_proxy:latest .`
 
 
 ## Running 
-### Golang 
+#### Golang 
 `WEBAUTHN_PROXY_CONFIGPATH=${PWD} ./webauthn_proxy`
 
-### Docker
+#### Docker
 `docker run -p 8080:8080 -it -v /path/to/webauthn_proxy/config.yml:/opt/webauthn_proxy/config.yml -v /path/to/webauthn_proxy/credentials.yml:/opt/webauthn_proxy/credentials.yml webauthn_proxy:latest`
 
+ 
 
-## Authentication Proxy
-### NGinx
+## Using
+#### NGinx
 ```
 location / {
         auth_request /webauthn/auth;
@@ -65,7 +69,7 @@ location /webauthn_static/ {
 }
 ```
 
-### OpenResty (example of chaining WebAuthn proxy with [OAuth2 Proxy](https://github.com/oauth2-proxy/oauth2-proxy))
+#### OpenResty (example of chaining WebAuthn proxy with [OAuth2 Proxy](https://github.com/oauth2-proxy/oauth2-proxy))
 ```
 location / {
         auth_request /oauth2/auth;
@@ -78,6 +82,8 @@ location / {
                 local h = http.new()
                 h:set_timeout(5 * 1000)
                 local url = "http://127.0.0.1:8080/webauthn/auth"
+                ngx.req.set_header("X-Forwarded-Proto", ngx.var.scheme)
+                ngx.req.set_header("Host", ngx.var.host)
                 local res, err = h:request_uri(url, {method = "GET", headers = ngx.req.get_headers()})
                 if err or not res or res.status ~= 200 then
                         # Redirect to webauthn login, with email as the default username
@@ -109,14 +115,15 @@ location /webauthn_static/ {
 }
 ```
 
+ 
 
 ## Configuration Elements
 | Element | Description | Default |
 | ------- | ----------- | ------- |
 | credentialFile | Path and filename for where credentials are stored | /opt/webauthn_proxy/credentials.yml |
 | enableFullRegistration | When set to **_true_**, users can authenticate immediately after registering. Useful for testing, but generally not safe for production. | false |
-| rpDisplayName | Display name of relying party | _<None>_ |
-| rpID | ID of the relying party, usually the domain the proxy and callers live under | _<None>_ |
+| *rpDisplayName* | Display name of relying party | _<None>_ |
+| *rpID* | ID of the relying party, usually the domain the proxy and callers live under | _<None>_ |
 | rpOrigins | Array of full origins used for accessing the proxy, including port if not 80/443, e.g. http://service.example.com:8080. | All Origins |
 | serverAddress | Address the proxy server should listen on (usually 127.0.0.1 or 0.0.0.0) | 127.0.0.1 |
 | serverPort | Port the proxy server should listen on | 8080 |
@@ -125,6 +132,7 @@ location /webauthn_static/ {
 | staticPath | Path on disk to static assets | /static/ |
 | usernameRegex | Regex for validating usernames | ^.*$ |
 
+ 
 
 ## Thanks! 
 - Duo Labs: https://duo.com/labs
