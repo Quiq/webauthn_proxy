@@ -136,10 +136,10 @@ func main() {
 	fmt.Printf("\nSession Hard Tiemout: %d", configuration.SessionHardTimeoutSeconds)
 	fmt.Printf("\nStatic Path: %s", configuration.StaticPath)
 	fmt.Printf("\nTest Mode: %v", configuration.TestMode)
-	fmt.Printf("\nUsername Regex: %s\n\n", configuration.UsernameRegex)
+	fmt.Printf("\nUsername Regex: %s", configuration.UsernameRegex)
 
 	if configuration.TestMode {
-		fmt.Printf("\nWarning!!! Test Mode enabled! This is not safe for production!")
+		fmt.Printf("\n\nWarning!!! Test Mode enabled! This is not safe for production!\n\n")
 	}
 
 	// Read in credentials file
@@ -554,7 +554,7 @@ func ProcessRegistrationAttestation(w http.ResponseWriter, r *http.Request) {
 	// Only enable test mode during testing!
 	if configuration.TestMode {
 		users[username] = user
-		delete(users, username)
+		delete(registrations, username)
 	}
 
 	// Marshal the user so it can be added to the credentials file
