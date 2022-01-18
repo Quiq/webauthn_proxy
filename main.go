@@ -36,7 +36,7 @@ var (
 type Configuration struct {
 	CredentialFile string
 
-	EnableFullRegistration bool
+	TestMode bool
 
 	RPDisplayName string   // Relying party display name
 	RPID          string   // Relying party ID
@@ -96,7 +96,7 @@ func main() {
 
 	// Set configuration defaults
 	viper.SetDefault("credentialfile", "/opt/webauthn_proxy/credentials.yml")
-	viper.SetDefault("enablefullregistration", false)
+	viper.SetDefault("testmode", false)
 	viper.SetDefault("rporigins", []string{})
 	viper.SetDefault("serveraddress", "127.0.0.1")
 	viper.SetDefault("serverport", "8080")
@@ -130,13 +130,17 @@ func main() {
 	fmt.Printf("\nRelying Party Display Name: %s", configuration.RPDisplayName)
 	fmt.Printf("\nRelying Party ID: %s", configuration.RPID)
 	fmt.Printf("\nRelying Party Origins: %v", configuration.RPOrigins)
-	fmt.Printf("\nEnable Full Registration: %v", configuration.EnableFullRegistration)
 	fmt.Printf("\nServer Address: %s", configuration.ServerAddress)
 	fmt.Printf("\nServer Port: %s", configuration.ServerPort)
 	fmt.Printf("\nSession Soft Timeout: %d", configuration.SessionSoftTimeoutSeconds)
 	fmt.Printf("\nSession Hard Tiemout: %d", configuration.SessionHardTimeoutSeconds)
 	fmt.Printf("\nStatic Path: %s", configuration.StaticPath)
+	fmt.Printf("\nTest Mode: %v", configuration.TestMode)
 	fmt.Printf("\nUsername Regex: %s\n\n", configuration.UsernameRegex)
+
+	if configuration.TestMode {
+		fmt.Printf("\nWarning!!! Test Mode enabled! This is not safe for production!")
+	}
 
 	// Read in credentials file
 	if credfile, err = ioutil.ReadFile(configuration.CredentialFile); err != nil {
@@ -547,9 +551,8 @@ func ProcessRegistrationAttestation(w http.ResponseWriter, r *http.Request) {
 	user.AddCredential(*credential)
 
 	// Note: enabling this can be risky as it allows anyone to add themselves to the proxy.
-	// Only enable full registration if the registration page is secure (e.g. behind
-	// some other form of authentication)
-	if configuration.EnableFullRegistration {
+	// Only enable test mode during testing!
+	if configuration.TestMode {
 		users[username] = user
 		delete(users, username)
 	}

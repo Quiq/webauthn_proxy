@@ -1,35 +1,32 @@
 ![WebAuthn Proxy Login Page](/assets/images/screengrab.png)
 
-## Goals
-The goal of this project is to create a standalone proxy to enforce Webauthn authentication. It can be inserted in front of sensitive services or even chained with other proxies (e.g. OAuth, MFA) to enable a layered security model. 
+A standalone proxy to enforce Webauthn authentication. It can be inserted in front of sensitive services or even chained with other proxies (e.g. OAuth, MFA) to enable a layered security model. 
 
 Webauthn is a passwordless, public key authentication mechanism that allows the use of hardware-based authenticators such as Yubikey, Apple Touch ID or Windows Hello. You can learn more about Webauthn [here](https://webauthn.guide/). 
 
-We specifically built this proxy to fit into our ecosystem and we hope that it might be useful for other teams. Our aim was to make a Webauthn module that was configurable and manageable using standard DevOps tools (in our case Docker and Ansible) and which could be easily inserted into our existing service deployments behind a reverse proxy like NGinx/OpenResty, and chained with other similar security proxies that we use.
+## Goals
+We specifically built this proxy to fit into our ecosystem and we hope that it might be useful for other teams. Our aim was to make a Webauthn module that was configurable and manageable using standard DevOps tools (in our case Docker and Ansible) and which could be easily inserted into our existing service deployments behind a reverse proxy like NGinx/OpenResty, and chained with other similar security proxies that we use such as [OAuth2 Proxy](https://github.com/oauth2-proxy/).
 
- 
 
 ## Getting Started
-First thing you will need to do is build the project. You can use the provided dockerfile to build an image, or directly in Go using the instructions below.
+First thing you will need to do is build the project. See instructions below for building the Go code directly, or using Docker.
 
 Next, copy the `config.yml` file from the `sample_config` directory and modify it to meet your needs. By default the proxy will look for this file in `/opt/webauthn_proxy` but you can override this by setting the `WEBAUTHN_PROXY_CONFIGPATH` environment variable to the directory where you've stored the file. 
 
 You will also need a `credentials.yml` file, which is a simple YAML file with key-value pairs of username to credential. The credential is a base64 encoded JSON object which is output during the registration process. You can start with an empty credentials file until you've registered your first user, the path to this file is one of the values in `config.yml`. 
 
-_**Important Note**_: One of the most critical properties in the config is `enableFullRegistration`. By setting this value to `true`, a user will be able to authenticate immediately after they have registered without any intervention from a system administrator, until the proxy is restarted. This is useful for testing, but we highly recommend you set this property to `false` in production.
+_**Important Note**_: One of the most critical properties in the config is `testMode`. By setting this value to `true`, a user will be able to authenticate immediately after they have registered without any intervention from a system administrator, until the proxy is restarted. This is useful for testing, but we highly recommend you set this property to `false` in production.
 
-_**Other Important Note**_: The `rpID` and `rpOrigins` configuration options are critical to how Webauthn works. `rpID` should be set to the domain that your services operate under, for example if you want to secure your CI system and code repositories at _https://ci.example.com_ and _https://code.example.com_, you should set `rpID` to simply `example.com`. This will allow both sites to share the same set of credentials. If `rpOrigins` is left empty, the proxy will dynamically allow requests to any origin, otherwise it will only allow those specific origins.
+_**Other Important Note**_: The `rpID` and `rpOrigins` configuration options are critical to how Webauthn works. `rpID` should be set to the domain that your services operate under, for example if you want to secure your CI system and code repositories at _https://ci.example.com_ and _https://code.example.com_, you should set `rpID` to simply `example.com`. This will allow both sites to share the same set of credentials. If `rpOrigins` is left empty, the proxy will dynamically allow requests to any origin, otherwise it will only allow the configured origins.
 
-Once the proxy is started you can register a user by going to _http://localhost:8080/webauthn/register_ (assuming you used 8080 as the server port). Enter a username and then click _Register_. You will be prompted to authenticate, which is a browser dependent operation (see below). After following the prompts, you will be given a username and credential combination to add to your credentials file. You should add this entry and then restart the proxy, there is no way to hot-reload it at the moment.
+Once the proxy is started you can register a user by going to _http://localhost:8080/webauthn/register_ (assuming you used 8080 as the server port). Enter a username and then click _Register_. You will be prompted to authenticate, which is a browser dependent operation (see below). After following the prompts, you will be given a username and credential combination. You should add this entry to the credentials file and restart the proxy, there is no way to hot-reload it at the moment.
 
 You can configure this as an authentication proxy using the sample configuration for NGinx or Openresty below. Other proxies and webservers haven't been tested currently but they should work and if you have done so please feel free to open a pull request to this document with details.
 
- 
 
 ## Supported Browsers and Authenticators
-Currently, Chrome supports Yubikey, Apple Touch ID, Android Phones via push notification, and potentially other mechanisms such as Windows Hello. Firefox only supports Yubikey at the current time. Other browsers have not been tested but likely will function just fine if they support Webauthn; please feel free to open a pull request to this document with your own testing details.
+Currently, Chrome supports Yubikey, Apple Touch ID, Android Phones via push notification, and potentially other mechanisms such as Windows Hello. Firefox only appears to support Yubikey at the current time. Other browsers have not been tested but likely will function just fine if they support Webauthn; please feel free to open a pull request to this document with your own testing details.
 
- 
 
 ## Building 
 #### Golang
@@ -46,7 +43,6 @@ Currently, Chrome supports Yubikey, Apple Touch ID, Android Phones via push noti
 #### Docker
 `docker run -p 8080:8080 -it -v /path/to/webauthn_proxy/config.yml:/opt/webauthn_proxy/config.yml -v /path/to/webauthn_proxy/credentials.yml:/opt/webauthn_proxy/credentials.yml webauthn_proxy:latest`
 
- 
 
 ## Using
 #### NGinx
@@ -115,13 +111,11 @@ location /webauthn_static/ {
 }
 ```
 
- 
 
 ## Configuration Elements
 | Element | Description | Default |
 | ------- | ----------- | ------- |
 | credentialFile | Path and filename for where credentials are stored | /opt/webauthn_proxy/credentials.yml |
-| enableFullRegistration | When set to **_true_**, users can authenticate immediately after registering. Useful for testing, but generally not safe for production. | false |
 | *rpDisplayName* | Display name of relying party | _<None>_ |
 | *rpID* | ID of the relying party, usually the domain the proxy and callers live under | _<None>_ |
 | rpOrigins | Array of full origins used for accessing the proxy, including port if not 80/443, e.g. http://service.example.com:8080. | All Origins |
@@ -130,9 +124,9 @@ location /webauthn_static/ {
 | sessionSoftTimeoutSeconds | Length of time logins are valid for, in seconds | 28800 (8 hours) |
 | sessionHardTimeoutSeconds | Max length of logged in session, as calls to /webauthn/auth reset the session timeout | 86400 (24 hours) |
 | staticPath | Path on disk to static assets | /static/ |
+| testMode | When set to **_true_**, users can authenticate immediately after registering. Useful for testing, but generally not safe for production. | false |
 | usernameRegex | Regex for validating usernames | ^.*$ |
 
- 
 
 ## Thanks! 
 - Duo Labs: https://duo.com/labs
