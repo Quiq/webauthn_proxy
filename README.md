@@ -9,7 +9,7 @@ We specifically built this proxy to fit into our ecosystem and we hope that it m
 
 
 ## Getting Started
-First thing you will need to do is build the project. See instructions [below](#building) for building the Go code directly, or using Docker.
+First thing you will need to do is build the project. See instructions [below](#building) for building the Go code directly, or using Docker. It is also available on [on Dockerhub](https://hub.docker.com/r/quiq/webauthn_proxy) if you don't want to build it yourself.
 
 Next, copy the `config.yml` file from the `sample_config` directory and modify it to meet your needs. By default the proxy will look for this file in `/opt/webauthn_proxy` but you can override this by setting the `WEBAUTHN_PROXY_CONFIGPATH` environment variable to the directory where you've stored the file.
 
@@ -36,6 +36,10 @@ Other browsers have not been tested but likely will function just fine if they s
 
 #### Docker
 `docker build -t webauthn_proxy:latest .`
+
+Or to pull from Dockerhub use:
+
+`docker pull quiq/webauthn_proxy`
 
 
 ## Running 
