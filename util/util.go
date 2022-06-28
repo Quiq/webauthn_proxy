@@ -96,6 +96,7 @@ func RandInit() {
 	math_rand.Seed(int64(binary.LittleEndian.Uint64(b[:])))
 }
 
+//generate a challenge using crypto/rand functions and returning base64 encoded
 func genChallenge(int len) {
 	if len < 32 {
 		//overide for minimum allowable value, we want to be able to set way beyond but enforce at least 32 bytes
