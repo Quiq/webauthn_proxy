@@ -1,16 +1,20 @@
 package util
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"regexp"
 
 	"github.com/duo-labs/webauthn/webauthn"
 	"github.com/gorilla/sessions"
+
+	crypto_rand "crypto/rand"
+	"encoding/binary"
+	math_rand "math/rand"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -83,11 +87,35 @@ func SaveWebauthnSession(session *sessions.Session, key string, sessionData *web
 	return nil
 }
 
+func RandInit() {
+	var b [8]byte
+	_, err := crypto_rand.Read(b[:])
+	if err != nil {
+		panic("cannot seed math/rand package with cryptographically secure random number generator")
+	}
+	math_rand.Seed(int64(binary.LittleEndian.Uint64(b[:])))
+}
+
+func genChallenge(int len) {
+	if len < 32 {
+		//overide for minimum allowable value, we want to be able to set way beyond but enforce at least 32 bytes
+		len = 32
+	}
+	//spec recomends 16 bytes challenge, we're going to double that
+	challenge := make([]byte, len)
+	_, err := crypto_rand.Read(challenge)
+	if err != nil {
+		panic("failed to seed challenge from crypto/rand cryptographically secure function")
+	}
+	r := base64.RawURLEncoding.EncodeToString(challenge)
+	return r
+}
+
 // Generate a random string of alpha characters of length n
 func RandStringBytesRmndr(n int) []byte {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
+		b[i] = letterBytes[math_rand.Int63()%int64(len(letterBytes))]
 	}
 	return b
 }

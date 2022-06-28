@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -80,8 +79,7 @@ func main() {
 
 	loginError = WebAuthnError{Message: "Unable to login"}
 	registrationError = WebAuthnError{Message: "Error during registration"}
-
-	rand.Seed(time.Now().UnixNano())
+	util.RandInit()
 
 	users = make(map[string]u.User)
 	registrations = make(map[string]u.User)
@@ -181,7 +179,7 @@ func main() {
 			}
 			webAuthns[rpOrigin] = webAuthn
 
-			var sessionStoreKey = util.RandStringBytesRmndr(32)
+			var sessionStoreKey = util.genChallenge(32)
 			var sessionStore = sessions.NewCookieStore(sessionStoreKey)
 			// Sessions maintained for up to soft timeout limit
 			sessionStore.Options = &sessions.Options{
@@ -613,7 +611,7 @@ func checkOrigin(r *http.Request) (*webauthn.WebAuthn, *sessions.CookieStore, er
 		}
 		webAuthns[origin] = webAuthn
 
-		var sessionStoreKey = util.RandStringBytesRmndr(32)
+		var sessionStoreKey = util.genChallenge(32)
 		var sessionStore = sessions.NewCookieStore(sessionStoreKey)
 		// Sessions maintained for up to soft timeout limit
 		sessionStore.Options = &sessions.Options{
