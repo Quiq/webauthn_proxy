@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 
+	"github.com/duo-labs/webauthn/protocol"
 	"github.com/duo-labs/webauthn/webauthn"
 	"github.com/gorilla/sessions"
 
@@ -96,19 +97,14 @@ func RandInit() {
 	math_rand.Seed(int64(binary.LittleEndian.Uint64(b[:])))
 }
 
-func genChallenge(int len) {
-	if len < 32 {
-		//overide for minimum allowable value, we want to be able to set way beyond but enforce at least 32 bytes
-		len = 32
-	}
-	//spec recomends 16 bytes challenge, we're going to double that
-	challenge := make([]byte, len)
-	_, err := crypto_rand.Read(challenge)
+// Generate crytographically secure challenge
+func GenChallenge() string {
+	//call on the import DUO method
+	challenge, err := protocol.CreateChallenge()
 	if err != nil {
-		panic("failed to seed challenge from crypto/rand cryptographically secure function")
+		panic("Failed to generate cryographically secure challenge")
 	}
-	r := base64.RawURLEncoding.EncodeToString(challenge)
-	return r
+	return base64.RawURLEncoding.EncodeToString(challenge)
 }
 
 // Generate a random string of alpha characters of length n
