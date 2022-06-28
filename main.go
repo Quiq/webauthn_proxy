@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -80,8 +79,7 @@ func main() {
 
 	loginError = WebAuthnError{Message: "Unable to login"}
 	registrationError = WebAuthnError{Message: "Error during registration"}
-
-	rand.Seed(time.Now().UnixNano())
+	util.RandInit()
 
 	users = make(map[string]u.User)
 	registrations = make(map[string]u.User)
