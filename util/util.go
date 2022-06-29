@@ -12,10 +12,6 @@ import (
 	"github.com/duo-labs/webauthn/protocol"
 	"github.com/duo-labs/webauthn/webauthn"
 	"github.com/gorilla/sessions"
-
-	crypto_rand "crypto/rand"
-	"encoding/binary"
-	math_rand "math/rand"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -88,15 +84,6 @@ func SaveWebauthnSession(session *sessions.Session, key string, sessionData *web
 	return nil
 }
 
-func RandInit() {
-	var b [8]byte
-	_, err := crypto_rand.Read(b[:])
-	if err != nil {
-		panic("cannot seed math/rand package with cryptographically secure random number generator")
-	}
-	math_rand.Seed(int64(binary.LittleEndian.Uint64(b[:])))
-}
-
 // Generate crytographically secure challenge
 func GenChallenge() string {
 	//call on the import DUO method
@@ -105,13 +92,4 @@ func GenChallenge() string {
 		panic("Failed to generate cryographically secure challenge")
 	}
 	return base64.RawURLEncoding.EncodeToString(challenge)
-}
-
-// Generate a random string of alpha characters of length n
-func RandStringBytesRmndr(n int) []byte {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[math_rand.Int63()%int64(len(letterBytes))]
-	}
-	return b
 }
