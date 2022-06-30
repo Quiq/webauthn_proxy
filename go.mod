@@ -97,8 +97,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
-
-replace (
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible => github.com/golang-jwt/jwt v3.2.0+incompatible
-	google.golang.org/grpc => google.golang.org/grpc v1.29.0
-)
