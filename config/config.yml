@@ -1,0 +1,35 @@
+## rpDisplayName - Display name of the relying party
+rpDisplayName: "MyCompany"
+
+## rpID - ID of the relying party, a valid domain string usually the domain the proxy and callers live under.
+## By default, the RP ID for a WebAuthn operation is set to the caller’s origin's effective domain.
+## This default MAY be overridden by the caller, as long as the caller-specified RP ID value
+## is a registrable domain suffix of or is equal to the caller’s origin's effective domain.
+rpID: localhost
+
+## rpOrigins - Array of full origins used for accessing the proxy, including port if not 80/443
+rpOrigins:
+#  - http://localhost:8080
+#  - https://service.example.com
+
+## serverAddress - Address the proxy server should listen on (usually 127.0.0.1 or 0.0.0.0)
+## Note, it should be 0.0.0.0 when running in Docker and network mode is not "host".
+# serverAddress: 0.0.0.0
+
+## serverPort - Port the proxy server should listen on
+# serverPort: 8080
+
+## sessionSoftTimeoutSeconds - Length of time logins are valid for, in seconds
+# sessionSoftTimeoutSeconds: 28800
+
+## sessionHardTimeoutSeconds - Max length of logged in session, as calls to /webauthn/auth reset the session timeout
+# sessionHardTimeoutSeconds: 86400
+
+## testMode - When set to 'true', users can authenticate immediately
+## after registering. Useful for testing, but generally not safe for production.
+# testMode: false
+
+## usernameRegex - Regex for validating usernames
+## The following regex will allow usernames with uppercase, lowercase, digits, or "-.@" ...
+## Basically, email addresses
+# usernameRegex: ^[A-Za-z0-9\-\_\.\@]+$
