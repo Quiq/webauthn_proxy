@@ -1,3 +1,10 @@
+body {
+    font-family: "Open Sans", sans-serif;
+    font-size: 1.125rem;
+    color: #888;
+    font-weight: 400;
+}
+
 a {
     color: blue;
     text-decoration: underline;

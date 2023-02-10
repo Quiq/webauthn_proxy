@@ -2,12 +2,17 @@
     <head>
         <meta charset="utf-8">
         <title>WebAuthn Proxy Register</title>
-        <link rel="stylesheet" type="text/css" href="/webauthn_static/styles.css"  />
-        <script src="/webauthn_static/jquery-3.6.0.min.js"></script>
-        <script src="/webauthn_static/script.js"></script>
+        <link rel="stylesheet" type="text/css" href="/webauthn/static/styles.css"  />
+        <script src="/webauthn/static/jquery-3.6.3.min.js"></script>
+        <script src="/webauthn/static/script.js"></script>
         <script>
             $(document).ready(() => {
                 if (browserCheck()) {
+                    $('#username').keyup(function(e) {
+                        if ($("#username").is(":focus") && event.key == "Enter") {
+                            registerUser();
+                        }
+                    });
                     $('#registerButton').click(registerUser);
 
                     // Prepopulate the username field if specified
@@ -36,22 +41,24 @@
     </head>
     <body>
         <div id="form">
-            <img src="/webauthn_static/title-image.png" />
+            <img src="/webauthn/static/title-image.png" />
             <div id="errorMessages" class="errorMessageText"></div>
             <div id="successMessages" class="successMessageText"></div>
             <br />
             <table>
                 <tr>
-                    <td>Register User:</td>
-                    <td><input type="text" name="username" id="username" /></td>
+                    <td>Username:</td>
+                    <td><input type="text" name="username" id="username" size="30" /></td>
                     <td><button id="registerButton">Register</button></td>
                 </tr>
             </table>
             <br />
             <span>
                 <textarea readonly id="preformattedMessages" rows="4" cols="100"></textarea>
-                <input type="image" id="copyButton" src="/webauthn_static/clipboard.png" />
+                <input type="image" id="copyButton" src="/webauthn/static/clipboard.png" />
             </span>
+            <br />
+            Already registered? <a href="/webauthn/login">Login</a>
         </div>
     </body>
 </html>

@@ -14,19 +14,20 @@ let preformattedMessage = message => {
 
 let browserCheck = () => {
     if (!window.PublicKeyCredential) {
-        errorMessage('This browser doesn\'t support WebAuthn');
+        errorMessage('This browser does not support WebAuthn :(');
         return false;
     }
 
     return true;
 };
 
-let bufferDecode = value => Uint8Array.from(atob(value), c => c.charCodeAt(0));
+// base64url > base64 > Uint8Array > ArrayBuffer
+let bufferDecode = value => Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0))
+    .buffer;
 
+// ArrayBuffer > Uint8Array > base64 > base64url
 let bufferEncode = value => btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 
 let formatFinishRegParams = cred => JSON.stringify({
     id: cred.id,
@@ -52,7 +53,7 @@ let formatFinishLoginParams = assertion => JSON.stringify({
 
 let registerUser = () => {
     let username = $('#username').val();
-    
+
     if (username === '') {
         errorMessage('Please enter a valid username');
 	    return;
@@ -86,7 +87,11 @@ let registerUser = () => {
             preformattedMessage(success.Data);
         })
         .catch(error => {
-            errorMessage(error.responseJSON.Message);
+            if(error.hasOwnProperty("responseJSON")){
+                errorMessage(error.responseJSON.Message);
+            } else {
+                errorMessage(error);
+            }
         });
 };
 
@@ -107,7 +112,7 @@ let authenticateUser = () => {
             credRequestOptions.publicKey.allowCredentials.forEach(listItem => {
               listItem.id = bufferDecode(listItem.id)
             });
-          
+
             return navigator.credentials.get({
               publicKey: credRequestOptions.publicKey
             });
@@ -122,6 +127,10 @@ let authenticateUser = () => {
             window.location.reload();
         })
         .catch(error => {
-            errorMessage(error.responseJSON.Message);
+            if(error.hasOwnProperty("responseJSON")){
+                errorMessage(error.responseJSON.Message);
+            } else {
+                errorMessage(error);
+            }
         });
 };

@@ -2,9 +2,9 @@
     <head>
         <meta charset="utf-8">
         <title>WebAuthn Proxy Login</title>
-        <link rel="stylesheet" type="text/css" href="/webauthn_static/styles.css"  />
-        <script src="/webauthn_static/jquery-3.6.0.min.js"></script>
-        <script src="/webauthn_static/script.js"></script>
+        <link rel="stylesheet" type="text/css" href="/webauthn/static/styles.css"  />
+        <script src="/webauthn/static/jquery-3.6.3.min.js"></script>
+        <script src="/webauthn/static/script.js"></script>
         <script>
             const registerLinkClick = (defaultUsername) => {
                 let uri = "/webauthn/register";
@@ -16,6 +16,11 @@
 
             $(document).ready(() => {
                 if (browserCheck()) {
+                    $('#username').keyup(function(e) {
+                        if ($("#username").is(":focus") && event.key == "Enter") {
+                            authenticateUser();
+                        }
+                    });
                     $('#loginButton').click(authenticateUser);
 
                     // Prepopulate the username field if specified
@@ -25,6 +30,16 @@
                     if (urlParams.has('default_username')) {
                         username = urlParams.get('default_username');
                         $('#username').val(username);
+                    } else {
+                        let cookie = cookieStore.get("webauthn-proxy-username");
+                        const cookieValue = () => {
+                            cookie.then((a) => {
+                                $('#username').val(a.value);
+                                $('#registerLink').click(registerLinkClick.bind(registerLinkClick, a.value));
+                            })
+                            .catch(error => {})
+                        };
+                        cookieValue();
                     }
 
                     // Set focus to the username field
@@ -38,14 +53,14 @@
     </head>
     <body>
         <div id="form">
-            <img src="/webauthn_static/title-image.png" />
+            <img src="/webauthn/static/title-image.png" />
             <div id="errorMessages" class="errorMessageText"></div>
             <div id="successMessages" class="successMessageText"></div>
             <br />
             <table>
                 <tr>
                     <td>Authenticate:</td>
-                    <td><input type="text" name="username" id="username" /></td>
+                    <td><input type="text" name="username" id="username" size="30" /></td>
                     <td><button id="loginButton">Login</button></td>
                 </tr>
             </table>

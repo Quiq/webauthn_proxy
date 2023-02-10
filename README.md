@@ -2,7 +2,7 @@
 
 A standalone reverse-proxy to enforce Webauthn authentication. It can be inserted in front of sensitive services or even chained with other proxies (e.g. OAuth, MFA) to enable a layered security model.
 
-Webauthn is a passwordless, public key authentication mechanism that allows the use of hardware-based authenticators such as Yubikey, Apple Touch ID or Windows Hello. You can learn more about Webauthn [here](https://webauthn.guide/). 
+Webauthn is a passwordless, public key authentication mechanism that allows the use of hardware-based authenticators such as Yubikey, Apple Touch ID or Windows Hello. You can learn more about Webauthn [here](https://webauthn.guide/).
 
 ## Goals
 We specifically built this proxy to fit into our ecosystem and we hope that it might be useful for other teams. Our aim was to make a Webauthn module that was configurable and manageable using standard DevOps tools (in our case Docker and Ansible) and which could be easily inserted into our existing service deployments behind a reverse proxy like NGinx/OpenResty, and chained with other similar security proxies that we use such as [OAuth2 Proxy](https://github.com/oauth2-proxy/).
@@ -11,9 +11,10 @@ We specifically built this proxy to fit into our ecosystem and we hope that it m
 ## Getting Started
 First thing you will need to do is build the project. See instructions [below](#building) for building the Go code directly, or using Docker. It is also available on [on Dockerhub](https://hub.docker.com/r/quiq/webauthn_proxy) if you don't want to build it yourself.
 
-Next, copy the `config.yml` file from the `sample_config` directory and modify it to meet your needs. By default the proxy will look for this file in `/opt/webauthn_proxy` but you can override this by setting the `WEBAUTHN_PROXY_CONFIGPATH` environment variable to the directory where you've stored the file.
+By default the proxy will look for the config file `config.yml` and credentials file `credentials.yml` in
+`config/`, which is `/opt/config` in the Docker image but you can also override this by setting the `WEBAUTHN_PROXY_CONFIGPATH` environment variable to another directory.
 
-You will also need a `credentials.yml` file, which is a simple YAML file with key-value pairs of username to credential. The credential is a base64 encoded JSON object which is output during the registration process. You can start with an empty credentials file until you've registered your first user, the path to this file is one of the values in `config.yml`. 
+`credentials.yml` file is a simple YAML file with key-value pairs of username to credential. The credential is a base64 encoded JSON object which is output during the registration process. You can start with an empty credentials file until you've registered your first user.
 
 Now you can start the proxy. See instructions [below](#running) for running it directly, or using Docker. Once it's started you can register a user by going to _http://localhost:8080/webauthn/register_ (assuming you used 8080 as the server port). Enter a username and then click _Register_. You will be prompted to select an authenticator to register, which is a browser dependent operation (see below). After following the prompts, you will be given a username/credential combination. You should add this entry to the credentials file and restart the proxy.
 
@@ -29,26 +30,36 @@ Firefox and Chrome have been tested and work well, there is some differences in 
 
 Other browsers have not been tested but likely will function just fine if they support Webauthn; please feel free to open a pull request to this document with your own testing details.
 
-
-## Building 
+## Running
 #### Golang
-`go build -o webauthn_proxy && chmod +x webauthn_proxy`
+```
+go run .
+WEBAUTHN_PROXY_CONFIGPATH=/path/to/config/ go run .
+```
 
 #### Docker
-`docker build -t webauthn_proxy:latest .`
+```
+docker run --rm -ti -p 8080:8080 quiq/webauthn_proxy:latest
+docker run --rm -ti -p 8080:8080 -v /path/to/config:/opt/config:ro quiq/webauthn_proxy:latest
+```
+To generate cookie secret to add to `credentials.yml`:
+```
+docker run --rm -ti quiq/webauthn_proxy:latest -generate-secret
+<secret>
+```
 
-Or to pull from Dockerhub use:
-
-`docker pull quiq/webauthn_proxy`
-
-
-## Running 
-#### Golang 
-`WEBAUTHN_PROXY_CONFIGPATH=${PWD} ./webauthn_proxy`
+## Building yourself
+#### Golang
+```
+go build -o webauthn_proxy . && chmod +x webauthn_proxy
+./webauthn_proxy -v
+```
+Note, to run it elsewhere you will also need `config/` and `static/` dirs.
 
 #### Docker
-`docker run -p 8080:8080 -it -v /path/to/webauthn_proxy/config.yml:/opt/webauthn_proxy/config.yml -v /path/to/webauthn_proxy/credentials.yml:/opt/webauthn_proxy/credentials.yml webauthn_proxy:latest`
-
+```
+docker build -t webauthn_proxy:custom .
+```
 
 ## Using
 You can configure this as an authentication reverse-proxy using the sample configuration for NGinx or Openresty below. Other proxies and webservers haven't been tested currently but they should work and if you have done so please feel free to open a pull request to this document with details.
@@ -59,16 +70,13 @@ location / {
         auth_request /webauthn/auth;
         error_page 401 = /webauthn/login?redirect_url=$uri;
 
-        # ... 
+        # ...
 }
 
 # WebAuthn Proxy.
 location /webauthn/ {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Host $host;
-        proxy_pass http://127.0.0.1:8080;
-}
-location /webauthn_static/ {
         proxy_pass http://127.0.0.1:8080;
 }
 ```
@@ -80,7 +88,7 @@ location / {
 
         # Get the email from oauth2 proxy to prepolulate with the redirect below
         auth_request_set $email $upstream_http_x_auth_request_email;
-        error_page 401 = /oauth2/start?rd=$uri;  
+        error_page 401 = /oauth2/start?rd=$uri;
         access_by_lua_block {
                 local http = require "resty.http"
                 local h = http.new()
@@ -94,7 +102,7 @@ location / {
                         ngx.redirect("/webauthn/login?redirect_url=" .. ngx.var.request_uri .. "&default_username=" .. ngx.var.email)
                         ngx.exit(ngx.HTTP_OK)
                 end
-        }  
+        }
 
         # ...
 }
@@ -112,9 +120,6 @@ location /oauth2/ {
 location /webauthn/ {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Host $host;
-        proxy_pass http://127.0.0.1:8080;
-}
-location /webauthn_static/ {
         proxy_pass http://127.0.0.1:8080;
 }
 ```
@@ -143,20 +148,18 @@ Otherwise, if you wanted it to work for any service under _example.com_, you cou
 ## All Configuration Options
 | Option | Description | Default |
 | ------ | ----------- | ------- |
-| credentialFile | Path and filename for where credentials are stored | /opt/webauthn_proxy/credentials.yml |
-| **rpDisplayName** | Display name of relying party | _<None>_ |
-| **rpID** | ID of the relying party, usually the domain the proxy and callers live under | _<None>_ |
+| **rpDisplayName** | Display name of relying party | MyCompany |
+| **rpID** | ID of the relying party, usually the domain the proxy and callers live under | localhost |
 | rpOrigins | Array of full origins used for accessing the proxy, including port if not 80/443, e.g. http://service.example.com:8080. | All Origins |
-| serverAddress | Address the proxy server should listen on (usually 127.0.0.1 or 0.0.0.0) | 127.0.0.1 |
+| serverAddress | Address the proxy server should listen on (usually 127.0.0.1 or 0.0.0.0) | 0.0.0.0 |
 | serverPort | Port the proxy server should listen on | 8080 |
 | sessionSoftTimeoutSeconds | Length of time logins are valid for, in seconds | 28800 (8 hours) |
 | sessionHardTimeoutSeconds | Max length of logged in session, as calls to /webauthn/auth reset the session timeout | 86400 (24 hours) |
-| staticPath | Path on disk to static assets | /static/ |
 | testMode | When set to **_true_**, users can authenticate immediately after registering. Useful for testing, but generally not safe for production. | false |
-| usernameRegex | Regex for validating usernames | ^.*$ |
+| usernameRegex | Regex for validating usernames | ^.+$ |
 
 
-## Thanks! 
+## Thanks!
 - Duo Labs: https://duo.com/labs
 - Herbie Bolimovsky: https://www.herbie.dev/blog/webauthn-basic-web-client-server/
 - Paul Hankin / icza:  https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-go
