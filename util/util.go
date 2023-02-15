@@ -28,14 +28,6 @@ func GetUsername(r *http.Request, regex string) (string, error) {
 	return username, nil
 }
 
-// Get "redirect_url" query param
-func GetRedirectUrl(r *http.Request, defaultUrl string) string {
-	if url := r.URL.Query().Get("redirect_url"); url != "" {
-		return url
-	}
-	return defaultUrl
-}
-
 // Marshal object to JSON and write response
 func JSONResponse(w http.ResponseWriter, d interface{}, c int) {
 	dj, err := json.Marshal(d)

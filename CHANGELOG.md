@@ -1,6 +1,6 @@
 ## Changelog
 
-### 0.0.4 (2023-02-10)
+### 0.0.4 (2023-02-15)
 
 * Upgrade Go version to 1.19.5, alpine to 3.16 and other dependencies.
 * Switch from `github.com/duo-labs/webauthn` to `github.com/go-webauthn/webauthn`
@@ -18,6 +18,7 @@
   to use that information further in nginx config for whatever purpose.
 * Add `/webauthn/logout` endpoint, basically deletes the session cookie.
 * Add `/webauthn/verify` endpoint to perform user authentication verification.
+* Improve login page and redirect from any invalid path to the login page including /
   Useful as a 2FA check for external systems.
   For example, call to `http://localhost:8080/webauthn/verify?username=email@example.com&ip=127.0.0.1`
   returns ok if user is authenticated within the past 5 min. Also you need to specify IP address from where user did that. It doesn't have anything to do with the cookie session. It can be called from an external system.

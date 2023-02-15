@@ -2,6 +2,7 @@
     <head>
         <meta charset="utf-8">
         <title>WebAuthn Proxy Register</title>
+        <link rel="icon" type="image/x-icon" href="/webauthn/static/favicon.ico" />
         <link rel="stylesheet" type="text/css" href="/webauthn/static/styles.css"  />
         <script src="/webauthn/static/jquery-3.6.3.min.js"></script>
         <script src="/webauthn/static/script.js"></script>
@@ -48,7 +49,7 @@
             <table>
                 <tr>
                     <td>Username:</td>
-                    <td><input type="text" name="username" id="username" size="30" /></td>
+                    <td><input type="text" name="username" id="username" size="30" autocomplete="off" /></td>
                     <td><button id="registerButton">Register</button></td>
                 </tr>
             </table>

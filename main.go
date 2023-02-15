@@ -205,23 +205,30 @@ func main() {
 	r := http.NewServeMux()
 	fileServer := http.FileServer(http.Dir("./static"))
 	r.Handle("/webauthn/static/", http.StripPrefix("/webauthn/static/", fileServer))
-	r.HandleFunc("/webauthn/auth", HandleAuth)
-	r.HandleFunc("/webauthn/authenticated", HandleAuthenticated)
+	r.HandleFunc("/", HandleIndex)
 	r.HandleFunc("/webauthn/login", HandleLogin)
 	r.HandleFunc("/webauthn/login/get_credential_request_options", GetCredentialRequestOptions)
 	r.HandleFunc("/webauthn/login/process_login_assertion", ProcessLoginAssertion)
-	r.HandleFunc("/webauthn/logout", HandleLogout)
 	r.HandleFunc("/webauthn/register", HandleRegister)
 	r.HandleFunc("/webauthn/register/get_credential_creation_options", GetCredentialCreationOptions)
 	r.HandleFunc("/webauthn/register/process_registration_attestation", ProcessRegistrationAttestation)
+	r.HandleFunc("/webauthn/auth", HandleAuth)
 	r.HandleFunc("/webauthn/verify", HandleVerify)
+	r.HandleFunc("/webauthn/logout", HandleLogout)
 
 	listenAddress := fmt.Sprintf("%s:%s", configuration.ServerAddress, configuration.ServerPort)
 	logger.Infof("Starting server at %s", listenAddress)
 	logger.Fatal(http.ListenAndServe(listenAddress, r))
 }
 
+// Root page
+func HandleIndex(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/webauthn/login", http.StatusTemporaryRedirect)
+}
+
 // /webauthn/auth - Check if user has an authenticated session
+// This endpoint can be used for internal nginx checks.
+// Also this endpoint prolongs the user session by soft limit interval.
 func HandleAuth(w http.ResponseWriter, r *http.Request) {
 	_, sessionStore, err := checkOrigin(r)
 	if err != nil {
@@ -244,7 +251,7 @@ func HandleAuth(w http.ResponseWriter, r *http.Request) {
 	username := session.Values["authenticated_user"].(string)
 	if time.Now().Unix()-session.Values["authenticated_time"].(int64) >= int64(configuration.SessionHardTimeoutSeconds) {
 		// Session has exceeded the hard limit
-		logger.Infof("Expiring user %s session expired by hard limit", username)
+		logger.Debugf("Expiring user %s session expired by hard limit", username)
 		util.ExpireWebauthnSession(session, r, w)
 		util.JSONResponse(w, authError, http.StatusUnauthorized)
 		return
@@ -252,7 +259,7 @@ func HandleAuth(w http.ResponseWriter, r *http.Request) {
 	userIP := session.Values["authenticated_ip"].(string)
 	if userIP != util.GetUserIP(r) {
 		// User IP mismatches, let use to re-login
-		logger.Infof("Invalidating user %s session coming from %s while session was created from %s", username, util.GetUserIP(r), userIP)
+		logger.Debugf("Invalidating user %s session coming from %s while session was created from %s", username, util.GetUserIP(r), userIP)
 		util.ExpireWebauthnSession(session, r, w)
 		util.JSONResponse(w, authError, http.StatusUnauthorized)
 		return
@@ -264,7 +271,7 @@ func HandleAuth(w http.ResponseWriter, r *http.Request) {
 	util.JSONResponse(w, WebAuthnMessage{Message: "OK"}, http.StatusOK)
 }
 
-// /webauthn/login - Show authenticated page else serve up login page
+// /webauthn/login - Show authenticated page or serve up login page
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	_, sessionStore, err := checkOrigin(r)
 	if err != nil {
@@ -280,11 +287,17 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if auth, ok := session.Values["authenticated"].(bool); ok && auth {
-		redirectUrl := util.GetRedirectUrl(r, "/webauthn/authenticated")
-		http.Redirect(w, r, redirectUrl, http.StatusFound)
-	} else {
+	// Prevents html caching because this page serves two different pages.
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0")
+	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
 		http.ServeFile(w, r, filepath.Join(staticPath, "login.html"))
+		return
+	}
+
+	if redirectUrl := r.URL.Query().Get("redirect_url"); redirectUrl != "" {
+		http.Redirect(w, r, redirectUrl, http.StatusTemporaryRedirect)
+	} else {
+		http.ServeFile(w, r, filepath.Join(staticPath, "authenticated.html"))
 	}
 }
 
@@ -301,7 +314,7 @@ func HandleLogout(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		util.ExpireWebauthnSession(session, r, w)
 	}
-	http.Redirect(w, r, "/webauthn/login", http.StatusFound)
+	http.Redirect(w, r, "/webauthn/login", http.StatusTemporaryRedirect)
 }
 
 // /webauthn/verify - one-time verification if user has recently authenticated, useful as 2FA check.
@@ -338,11 +351,6 @@ func HandleVerify(w http.ResponseWriter, r *http.Request) {
 // /webauthn/register - Serve up registration page
 func HandleRegister(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filepath.Join(staticPath, "register.html"))
-}
-
-// /webauthn/authenticated - authenticated page
-func HandleAuthenticated(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, filepath.Join(staticPath, "authenticated.html"))
 }
 
 /*
