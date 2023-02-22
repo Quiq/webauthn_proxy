@@ -30,21 +30,30 @@
                     let username = null;
                     if (urlParams.has('default_username')) {
                         username = urlParams.get('default_username');
-                        $('#username').val(username);
                     } else {
-                        let cookie = cookieStore.get("webauthn-proxy-username");
-                        const cookieValue = () => {
-                            cookie.then((a) => {
-                                $('#username').val(a.value);
-                                $('#registerLink').click(registerLinkClick.bind(registerLinkClick, a.value));
-                            })
-                            .catch(error => {})
-                        };
-                        cookieValue();
+                        let cookies = document.cookie.split(';');
+                        for (let i = 0; i < cookies.length; i++) {
+                            let parts = cookies[i].split('=');
+                            if (parts[0].trim() === "webauthn-proxy-username") {
+                                username = decodeURIComponent(parts[1]);
+                                break;
+                            }
+                        }
+                        // From the future: the below code works only in Chrome.
+                        // let cookie = cookieStore.get("webauthn-proxy-username");
+                        // const cookieValue = () => {
+                        //     cookie.then((a) => {
+                        //         $('#username').val(a.value);
+                        //         $('#registerLink').click(registerLinkClick.bind(registerLinkClick, a.value));
+                        //     })
+                        //     .catch(error => {})
+                        // };
+                        // cookieValue();
                     }
 
-                    // Set focus to the username field
+                    // Set focus and value to the username field
                     $('#username').focus();
+                    $('#username').val(username);
 
                     // Click handler for the "register" link
                     $('#registerLink').click(registerLinkClick.bind(registerLinkClick, username));

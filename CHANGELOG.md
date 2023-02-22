@@ -1,8 +1,8 @@
 ## Changelog
 
-### 0.0.4 (2023-02-15)
+### 0.0.4 (2023-02-22)
 
-* Upgrade Go version to 1.19.5, alpine to 3.16 and other dependencies.
+* Upgrade Go version to 1.19.6, alpine to 3.16 and other dependencies.
 * Switch from `github.com/duo-labs/webauthn` to `github.com/go-webauthn/webauthn`
 * Implement better logging.
 * Build multiarch Docker image including ARM now.
@@ -26,6 +26,7 @@
 * Store last logged username into a separate cookie, other minor tweaks for convenience.
 * Fix session expiration by the hard limit.
 * Fix JS decoding error after switching to `github.com/go-webauthn/webauthn` and messages for other JS errors.
+* Compatibility with Chrome, Firefox and Safari. However, Touch ID only works in Chrome.
 
 ### 0.0.3 (2022-06-30)
 
