@@ -1,7 +1,17 @@
 IMAGE=quiq/webauthn_proxy
 VERSION=`sed -n '/version/ s/.* = //;s/"//g p' version.go`
+NOCACHE=--no-cache
 
-.DEFAULT: buildx
+.DEFAULT_GOAL := dummy
 
-buildx:
-	@docker buildx build --platform linux/amd64,linux/arm64 -t ${IMAGE}:${VERSION} -t ${IMAGE}:latest --push .
+dummy:
+	@echo "Nothing to do here."
+
+build:
+	docker build ${NOCACHE} -t ${IMAGE}:${VERSION} .
+
+public:
+	docker buildx build ${NOCACHE} --platform linux/amd64,linux/arm64 -t ${IMAGE}:${VERSION} -t ${IMAGE}:latest --push .
+
+test:
+	docker buildx build ${NOCACHE} --platform linux/arm64 -t docker.quiq.sh/webauthn_proxy:test --push .

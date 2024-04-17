@@ -1,4 +1,3 @@
 .DS_Store
 dev_config/
-dev.Makefile
 webauthn_proxy

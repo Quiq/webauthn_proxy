@@ -1,5 +1,10 @@
 ## Changelog
 
+### 0.1 (2024-04-17)
+
+* Upgrade Go version to 1.22.2, alpine to 3.19 and other dependencies.
+* Disable unnecessary 1Password auto-filling.
+
 ### 0.0.4 (2023-02-22)
 
 * Upgrade Go version to 1.19.6, alpine to 3.16 and other dependencies.
