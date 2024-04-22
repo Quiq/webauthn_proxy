@@ -157,6 +157,7 @@ Otherwise, if you wanted it to work for any service under _example.com_, you cou
 | sessionHardTimeoutSeconds | Max length of logged in session, as calls to /webauthn/auth reset the session timeout | 86400 (24 hours) |
 | testMode | When set to **_true_**, users can authenticate immediately after registering. Useful for testing, but generally not safe for production. | false |
 | usernameRegex | Regex for validating usernames | ^.+$ |
+| cookieSecure | When set to **_true_**, enables the Secure flag for cookies. Useful when running behind a TLS reverse proxy. | false |
 
 
 ## Thanks!
