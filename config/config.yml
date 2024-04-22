@@ -29,6 +29,12 @@ rpOrigins:
 ## after registering. Useful for testing, but generally not safe for production.
 # testMode: false
 
+## SessionCookieName - Change the name of the session cookie
+# sessionCookieName: "webauthn-proxy-session"
+
+## UserCookieName - Change the name of the username cookie
+# userCookieName: "webauthn-proxy-username"
+
 ## usernameRegex - Regex for validating usernames
 ## The following regex will allow usernames with uppercase, lowercase, digits, or "-.@" ...
 ## Basically, email addresses
