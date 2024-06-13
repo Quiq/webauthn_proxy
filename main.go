@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"time"
 
 	u "github.com/Quiq/webauthn_proxy/user"
@@ -163,7 +164,7 @@ func main() {
 		if err != nil {
 			logger.Fatalf("Error unmarshalling user credential %s: %s", username, err)
 		}
-		if username != unmarshaledUser.Name {
+		if username != strings.ToLower(unmarshaledUser.Name) {
 			logger.Fatalf("Credentials for user %s are designated for another one %s", username, unmarshaledUser.Name)
 		}
 		users[username] = *unmarshaledUser
@@ -372,7 +373,7 @@ func GetCredentialRequestOptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, exists := users[username]
+	user, exists := users[strings.ToLower(username)]
 	if !exists {
 		logger.Warnf("User %s does not exist", username)
 		util.JSONResponse(w, loginError, http.StatusBadRequest)
@@ -424,7 +425,7 @@ func ProcessLoginAssertion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, exists := users[username]
+	user, exists := users[strings.ToLower(username)]
 	if !exists {
 		logger.Errorf("User %s does not exist", username)
 		util.JSONResponse(w, loginError, http.StatusBadRequest)
