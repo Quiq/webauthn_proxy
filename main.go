@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	yaml "gopkg.in/yaml.v3"
 )
 
 type Configuration struct {
@@ -32,6 +34,11 @@ type Configuration struct {
 	SessionSoftTimeoutSeconds int
 	SessionHardTimeoutSeconds int
 	UsernameRegex             string
+}
+
+type Credentials struct {
+	CookieSecrets []string          `yaml:"cookie_session_secrets"`
+	Credentials   map[string]string `yaml:"user_credentials"`
 }
 
 type WebAuthnMessage struct {
@@ -91,6 +98,8 @@ func main() {
 	}
 
 	var err error
+	var credfile []byte
+	var credentials Credentials
 	// Standard error messages
 	loginError = WebAuthnMessage{Message: "Unable to login"}
 	registrationError = WebAuthnMessage{Message: "Error during registration"}
@@ -130,12 +139,16 @@ func main() {
 		logger.Fatalf("Unable to decode config file into struct: %s", err)
 	}
 	// Read in credentials file
-	logger.Infof("Reading credentials file %s/credentials.yml", configpath)
-	viper.SetConfigName("credentials")
-	viper.SetConfigType("yml")
-	if err := viper.ReadInConfig(); err != nil {
-		logger.Fatalf("Error reading credentials file %s/credentials.yml: %s", configpath, err)
+	credentialspath := filepath.Join(configpath, "credentials.yml")
+	logger.Infof("Reading credentials file %s", credentialspath)
+
+	if credfile, err = os.ReadFile(credentialspath); err != nil {
+		logger.Fatalf("Unable to read credential file %s %v", credentialspath, err)
 	}
+	if err = yaml.Unmarshal(credfile, &credentials); err != nil {
+		logger.Fatalf("Unable to parse YAML credential file %s %v", credentialspath, err)
+	}
+
 	logger.Debugf("Configuration: %+v\n", configuration)
 	logger.Debugf("Viper AllSettings: %+v\n", viper.AllSettings())
 
@@ -148,7 +161,7 @@ func main() {
 		logger.Fatal("Invalid session hard timeout, must be > session soft timeout")
 	}
 
-	cookieSecrets = viper.GetStringSlice("cookie_session_secrets")
+	cookieSecrets = credentials.CookieSecrets
 	if len(cookieSecrets) == 0 {
 		logger.Warnf("You did not set any cookie_session_secrets in credentials.yml.")
 		logger.Warnf("So it will be dynamic and your cookie sessions will not persist proxy restart.")
@@ -158,7 +171,7 @@ func main() {
 		logger.Warnf("You did not set any valid cookie_session_secrets in credentials.yml.")
 		logger.Fatalf("Generate one using `-generate-secret` flag and add to credentials.yml.")
 	}
-	for username, credential := range viper.GetStringMapString("user_credentials") {
+	for username, credential := range credentials.Credentials {
 		unmarshaledUser, err := u.UnmarshalUser(credential)
 		if err != nil {
 			logger.Fatalf("Error unmarshalling user credential %s: %s", username, err)
