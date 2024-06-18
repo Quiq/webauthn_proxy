@@ -36,7 +36,7 @@ type Configuration struct {
 	UsernameRegex             string
 }
 
-type Credentials struct {
+type CredentialsConfiguration struct {
 	CookieSecrets []string          `yaml:"cookie_session_secrets"`
 	Credentials   map[string]string `yaml:"user_credentials"`
 }
@@ -99,7 +99,7 @@ func main() {
 
 	var err error
 	var credfile []byte
-	var credentials Credentials
+	var credentialsConfig CredentialsConfiguration
 	// Standard error messages
 	loginError = WebAuthnMessage{Message: "Unable to login"}
 	registrationError = WebAuthnMessage{Message: "Error during registration"}
@@ -145,7 +145,7 @@ func main() {
 	if credfile, err = os.ReadFile(credentialspath); err != nil {
 		logger.Fatalf("Unable to read credential file %s %v", credentialspath, err)
 	}
-	if err = yaml.Unmarshal(credfile, &credentials); err != nil {
+	if err = yaml.Unmarshal(credfile, &credentialsConfig); err != nil {
 		logger.Fatalf("Unable to parse YAML credential file %s %v", credentialspath, err)
 	}
 
@@ -161,7 +161,7 @@ func main() {
 		logger.Fatal("Invalid session hard timeout, must be > session soft timeout")
 	}
 
-	cookieSecrets = credentials.CookieSecrets
+	cookieSecrets = credentialsConfig.CookieSecrets
 	if len(cookieSecrets) == 0 {
 		logger.Warnf("You did not set any cookie_session_secrets in credentials.yml.")
 		logger.Warnf("So it will be dynamic and your cookie sessions will not persist proxy restart.")
@@ -171,7 +171,7 @@ func main() {
 		logger.Warnf("You did not set any valid cookie_session_secrets in credentials.yml.")
 		logger.Fatalf("Generate one using `-generate-secret` flag and add to credentials.yml.")
 	}
-	for username, credential := range credentials.Credentials {
+	for username, credential := range credentialsConfig.Credentials {
 		unmarshaledUser, err := u.UnmarshalUser(credential)
 		if err != nil {
 			logger.Fatalf("Error unmarshalling user credential %s: %s", username, err)
