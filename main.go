@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	u "github.com/Quiq/webauthn_proxy/user"
@@ -33,6 +34,8 @@ type Configuration struct {
 	ServerPort                string
 	SessionSoftTimeoutSeconds int
 	SessionHardTimeoutSeconds int
+	SessionCookieName         string
+	UserCookieName            string
 	UsernameRegex             string
 }
 
@@ -56,8 +59,6 @@ type LoginVerification struct {
 }
 
 const (
-	SessionCookieName           = "webauthn-proxy-session"
-	UserCookieName              = "webauthn-proxy-username"
 	AuthenticatedUsernameHeader = "X-Authenticated-User"
 	loginVerificationInterval   = 5 * time.Minute
 	staticPath                  = "static/"
@@ -126,6 +127,8 @@ func main() {
 	viper.SetDefault("serverport", "8080")
 	viper.SetDefault("sessionsofttimeoutseconds", 28800)
 	viper.SetDefault("sessionhardtimeoutseconds", 86400)
+	viper.SetDefault("sessioncookiename", "webauthn-proxy-session")
+	viper.SetDefault("usercookiename", "webauthn-proxy-username")
 	viper.SetDefault("usernameregex", "^.+$")
 
 	// Read in configuration file
@@ -195,6 +198,8 @@ func main() {
 	fmt.Printf("Server Port: %s\n", configuration.ServerPort)
 	fmt.Printf("Session Soft Timeout: %d\n", configuration.SessionSoftTimeoutSeconds)
 	fmt.Printf("Session Hard Timeout: %d\n", configuration.SessionHardTimeoutSeconds)
+	fmt.Printf("Session Cookie Name: %s\n", configuration.SessionCookieName)
+	fmt.Printf("User Cookie Name: %s\n", configuration.UserCookieName)
 	fmt.Printf("Username Regex: %s\n", configuration.UsernameRegex)
 	fmt.Printf("Cookie secrets: %d\n", len(cookieSecrets))
 	fmt.Printf("User credentials: %d\n", len(users))
@@ -203,6 +208,18 @@ func main() {
 		fmt.Printf("Warning!!! Test Mode enabled! This is not safe for production!\n\n")
 	}
 
+	// Patching user cookie name in login.html
+	if configuration.UserCookieName != "webauthn-proxy-username" {
+		data, err := os.ReadFile(filepath.Join(staticPath, "login.html"))
+		if err != nil {
+			logger.Fatalf("Error reading login.html: %s", err)
+		}
+		newData := strings.Replace(string(data), "webauthn-proxy-username", configuration.UserCookieName, -1)
+		err = os.WriteFile(filepath.Join(staticPath, "login.html"), []byte(newData), 0)
+		if err != nil {
+			logger.Fatalf("Error saving login.html: %s", err)
+		}
+	}
 	// If list of relying party origins has been specified in configuration,
 	// create one Webauthn config / Session store per origin, else origins will be dynamic.
 	if len(configuration.RPOrigins) > 0 {
@@ -250,7 +267,7 @@ func HandleAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := sessionStore.Get(r, SessionCookieName)
+	session, err := sessionStore.Get(r, configuration.SessionCookieName)
 	if err != nil {
 		logger.Errorf("Error getting session from session store during user auth handler: %s", err)
 		util.JSONResponse(w, authError, http.StatusInternalServerError)
@@ -293,7 +310,7 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := sessionStore.Get(r, SessionCookieName)
+	session, err := sessionStore.Get(r, configuration.SessionCookieName)
 	if err != nil {
 		logger.Errorf("Error getting session from session store during login handler: %s", err)
 		util.JSONResponse(w, loginError, http.StatusInternalServerError)
@@ -323,7 +340,7 @@ func HandleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := sessionStore.Get(r, SessionCookieName)
+	session, err := sessionStore.Get(r, configuration.SessionCookieName)
 	if err == nil {
 		util.ExpireWebauthnSession(session, r, w)
 	}
@@ -401,7 +418,7 @@ func GetCredentialRequestOptions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Store Webauthn session data
-	session, err := sessionStore.Get(r, SessionCookieName)
+	session, err := sessionStore.Get(r, configuration.SessionCookieName)
 	if err != nil {
 		logger.Errorf("Error getting session from session store during login: %s", err)
 		util.JSONResponse(w, loginError, http.StatusInternalServerError)
@@ -445,7 +462,7 @@ func ProcessLoginAssertion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load the session data
-	session, err := sessionStore.Get(r, SessionCookieName)
+	session, err := sessionStore.Get(r, configuration.SessionCookieName)
 	if err != nil {
 		logger.Errorf("Error getting session from session store during login: %s", err)
 		util.JSONResponse(w, loginError, http.StatusInternalServerError)
@@ -493,7 +510,7 @@ func ProcessLoginAssertion(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 	// username cookie
 	ck := http.Cookie{
-		Name:    UserCookieName,
+		Name:    configuration.UserCookieName,
 		Path:    "/",
 		Value:   username,
 		Expires: time.Now().AddDate(1, 0, 0), // 1 year
@@ -544,7 +561,7 @@ func GetCredentialCreationOptions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Store session data as marshaled JSON
-	session, err := sessionStore.Get(r, SessionCookieName)
+	session, err := sessionStore.Get(r, configuration.SessionCookieName)
 	if err != nil {
 		logger.Errorf("Error getting session from session store during registration: %s", err)
 		util.JSONResponse(w, registrationError, http.StatusInternalServerError)
@@ -593,7 +610,7 @@ func ProcessRegistrationAttestation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load the session data
-	session, err := sessionStore.Get(r, SessionCookieName)
+	session, err := sessionStore.Get(r, configuration.SessionCookieName)
 	if err != nil {
 		logger.Errorf("Error getting session from session store during registration: %s", err)
 		util.JSONResponse(w, registrationError, http.StatusInternalServerError)
