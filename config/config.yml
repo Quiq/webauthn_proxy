@@ -33,3 +33,7 @@ rpOrigins:
 ## The following regex will allow usernames with uppercase, lowercase, digits, or "-.@" ...
 ## Basically, email addresses
 # usernameRegex: ^[A-Za-z0-9\-\_\.\@]+$
+
+## cookieSecure - When set to 'true', enables the Secure flag for cookies. 
+## Useful when running behind a TLS reverse proxy.
+# cookieSecure: false
