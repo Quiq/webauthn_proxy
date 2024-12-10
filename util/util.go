@@ -16,6 +16,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Placeholder for cookieSecure config value
+var CookieSecure bool = false
+
 // Get "username" query param and validate against supplied regex
 func GetUsername(r *http.Request, regex string) (string, error) {
 	username := r.URL.Query().Get("username")
@@ -72,6 +75,7 @@ func ExpireWebauthnSession(session *sessions.Session, r *http.Request, w http.Re
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
+		Secure:   CookieSecure,
 	}
 	session.Save(r, w)
 }
