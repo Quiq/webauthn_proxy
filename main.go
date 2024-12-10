@@ -211,18 +211,6 @@ func main() {
 		fmt.Printf("Warning!!! Test Mode enabled! This is not safe for production!\n\n")
 	}
 
-	// Patching user cookie name in login.html
-	if configuration.UserCookieName != "webauthn-proxy-username" {
-		data, err := os.ReadFile(filepath.Join(staticPath, "login.html"))
-		if err != nil {
-			logger.Fatalf("Error reading login.html: %s", err)
-		}
-		newData := strings.Replace(string(data), "webauthn-proxy-username", configuration.UserCookieName, -1)
-		err = os.WriteFile(filepath.Join(staticPath, "login.html"), []byte(newData), 0)
-		if err != nil {
-			logger.Fatalf("Error saving login.html: %s", err)
-		}
-	}
 	// If list of relying party origins has been specified in configuration,
 	// create one Webauthn config / Session store per origin, else origins will be dynamic.
 	if len(configuration.RPOrigins) > 0 {
@@ -324,7 +312,14 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// Prevents html caching because this page serves two different pages.
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0")
 	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
-		http.ServeFile(w, r, filepath.Join(staticPath, "login.html"))
+		content, err := os.ReadFile(filepath.Join(staticPath, "login.html"))
+		if err != nil {
+			util.JSONResponse(w, loginError, http.StatusNotFound)
+			return
+		}
+		content = []byte(strings.Replace(string(content), configuration.UserCookieName, configuration.UserCookieName, 1))
+		reader := bytes.NewReader(content)
+		http.ServeContent(w, r, "", time.Time{}, reader)
 		return
 	}
 
@@ -722,7 +717,7 @@ func createWebAuthnClient(origin string) (*webauthn.WebAuthn, *sessions.CookieSt
 	webAuthn, err := webauthn.New(&webauthn.Config{
 		RPDisplayName: configuration.RPDisplayName, // Relying party display name
 		RPID:          configuration.RPID,          // Relying party ID
-		RPOrigin:      origin,                      // Relying party origin
+		RPOrigins:     []string{origin},            // Relying party origin
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create WebAuthn for origin: %s", origin)
