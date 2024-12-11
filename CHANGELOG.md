@@ -1,5 +1,10 @@
 ## Changelog
 
+### 0.2 (2024-12-11)
+
+* Add new config options `userCookieName`, `sessionCookieName`, `cookieSecure` to customize cookie names.
+* Update Go version, alpine and all dependencies.
+
 ### 0.1 (2024-04-17)
 
 * Upgrade Go version to 1.22.2, alpine to 3.19 and other dependencies.
