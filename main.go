@@ -38,6 +38,7 @@ type Configuration struct {
 	UserCookieName            string
 	UsernameRegex             string
 	CookieSecure              bool
+	CookieDomain              string
 }
 
 type CredentialsConfiguration struct {
@@ -132,6 +133,7 @@ func main() {
 	viper.SetDefault("usercookiename", "webauthn-proxy-username")
 	viper.SetDefault("usernameregex", "^.+$")
 	viper.SetDefault("cookiesecure", false)
+	viper.SetDefault("cookiedomain", "")
 
 	// Read in configuration file
 	configpath := viper.GetString("configpath")
@@ -204,6 +206,7 @@ func main() {
 	fmt.Printf("User Cookie Name: %s\n", configuration.UserCookieName)
 	fmt.Printf("Username Regex: %s\n", configuration.UsernameRegex)
 	fmt.Printf("Cookie secure: %v\n", configuration.CookieSecure)
+	fmt.Printf("Cookie domain: %s\n", configuration.CookieDomain)
 	fmt.Printf("Cookie secrets: %d\n", len(cookieSecrets))
 	fmt.Printf("User credentials: %d\n", len(users))
 	fmt.Println()
@@ -224,6 +227,7 @@ func main() {
 	}
 
 	util.CookieSecure = configuration.CookieSecure
+	util.CookieDomain = configuration.CookieDomain
 	r := http.NewServeMux()
 	fileServer := http.FileServer(http.Dir("./static"))
 	r.Handle("/webauthn/static/", http.StripPrefix("/webauthn/static/", fileServer))
@@ -510,6 +514,7 @@ func ProcessLoginAssertion(w http.ResponseWriter, r *http.Request) {
 	// username cookie
 	ck := http.Cookie{
 		Name:    configuration.UserCookieName,
+		Domain:  configuration.CookieDomain,
 		Path:    "/",
 		Value:   username,
 		Expires: time.Now().AddDate(1, 0, 0), // 1 year
@@ -741,6 +746,7 @@ func createWebAuthnClient(origin string) (*webauthn.WebAuthn, *sessions.CookieSt
 	}
 	var sessionStore = sessions.NewCookieStore(byteKeyPairs...)
 	sessionStore.Options = &sessions.Options{
+		Domain:   configuration.CookieDomain,
 		Path:     "/",
 		MaxAge:   configuration.SessionSoftTimeoutSeconds,
 		HttpOnly: true,
