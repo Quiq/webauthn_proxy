@@ -160,6 +160,7 @@ Otherwise, if you wanted it to work for any service under _example.com_, you cou
 | testMode | When set to **_true_**, users can authenticate immediately after registering. Useful for testing, but generally not safe for production. | false |
 | usernameRegex | Regex for validating usernames | ^.+$ |
 | cookieSecure | When set to **_true_**, enables the Secure flag for cookies. Useful when running behind a TLS reverse proxy. | false |
+| cookieDomain | The domain to be used for cookies. Useful when running WebAuthn Proxy for multiple subdomains. | Domain of the page the user is visiting |
 
 
 ## Thanks!
