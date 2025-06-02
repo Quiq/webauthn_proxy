@@ -44,7 +44,7 @@ docker run --rm -ti -p 8080:8080 -v /path/to/config:/opt/config:ro quiq/webauthn
 ```
 To generate cookie secret to add to `credentials.yml`:
 ```
-docker run --rm -ti quiq/webauthn_proxy:latest -generate-secret
+docker run --rm --log-driver=none quiq/webauthn_proxy:latest -generate-secret
 <secret>
 ```
 
