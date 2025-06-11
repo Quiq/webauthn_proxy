@@ -1,5 +1,10 @@
 ## Changelog
 
+### 0.3 (2025-06-11)
+
+* Support for cookieDomain in config.
+* Upgrade go version to 1.24.4 and all dependencies, alpine to 3.21.
+
 ### 0.2 (2024-12-11)
 
 * Add new config options `userCookieName`, `sessionCookieName`, `cookieSecure` to customize cookie names.
