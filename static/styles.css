@@ -38,7 +38,41 @@ button {
 }
 
 #copyButton {
+    background-color: black;
     height: 30px;
-    width: 35px;
+    width: 30px;
     vertical-align: top;
+    border: none;
+    padding: 0;
+
+    -webkit-mask-image: url(/webauthn/static/clipboard.svg);
+    mask-image: url(/webauthn/static/clipboard.svg);
+    -webkit-mask-size: contain;
+    mask-size: contain;
 }
+
+/* Automatically activate dark mode based on user's OS preference */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #1e1e1e;
+        color: #d4d4d4;
+    }
+    a {
+        color: #8cb4ff;
+    }
+    input, textarea, button {
+        background-color: #333;
+        color: #d4d4d4;
+        border: 1px solid #555;
+    }
+    #copyButton {
+        /* Set the icon color for dark mode to white */
+        background-color: white;
+    }
+    #successMessages {
+        color: #4CAF50;
+    }
+    #errorMessages {
+        color: #f44336;
+    }
+ }
