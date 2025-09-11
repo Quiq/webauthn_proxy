@@ -19,7 +19,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	yaml "gopkg.in/yaml.v3"
+	yaml "go.yaml.in/yaml/v3"
 )
 
 type Configuration struct {
