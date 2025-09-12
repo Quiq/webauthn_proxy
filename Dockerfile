@@ -1,11 +1,11 @@
-FROM golang:1.24.4-alpine3.21 as builder
+FROM golang:1.25.1-alpine3.22 as builder
 
 WORKDIR /opt/src
 ADD . /opt/src
 RUN go build -o /opt/webauthn_proxy .
 
 
-FROM alpine:3.21
+FROM alpine:3.22
 
 WORKDIR /opt
 ADD config /opt/config
