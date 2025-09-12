@@ -40,7 +40,7 @@ type Configuration struct {
 	UsernameRegex             string
 	CookieSecure              bool
 	CookieDomain              string
-	CidrNetworks            map[string][]string `yaml:"cidr_networks"`
+	CidrNetworks            map[string][]string `yaml:"cidrNetworks"`
 }
 
 type CredentialsConfiguration struct {
