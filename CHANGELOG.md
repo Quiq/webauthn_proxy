@@ -1,5 +1,11 @@
 ## Changelog
 
+### 0.4 (2025-09-24)
+
+* Support dark mode based on what you have set in the OS.
+* Support for "cidrNetworks" in the config to handle user verification when user IP isn't an exact match.
+* Upgrade Go version to 1.25.1 and all dependencies, alpine to 3.22.
+
 ### 0.3 (2025-06-11)
 
 * Support for cookieDomain in config.

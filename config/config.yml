@@ -47,3 +47,9 @@ rpOrigins:
 ## cookieDomain - The domain to be used for cookies.
 ## Useful when running WebAuthn Proxy for multiple subdomains.
 # cookieDomain: example.com
+
+## cidrNetworks - User IP verification within a predefined CIDR when it is not an exact IP match.
+# To be used in /webauthn/verify endpoint.
+# cidrNetworks:
+#   "T-Mobile":
+#     - "172.56.0.0/14"
