@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -18,7 +19,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	yaml "gopkg.in/yaml.v3"
+	yaml "go.yaml.in/yaml/v3"
 )
 
 type Configuration struct {
@@ -39,6 +40,7 @@ type Configuration struct {
 	UsernameRegex             string
 	CookieSecure              bool
 	CookieDomain              string
+	CidrNetworks            map[string][]string `yaml:"cidrNetworks"`
 }
 
 type CredentialsConfiguration struct {
@@ -48,6 +50,15 @@ type CredentialsConfiguration struct {
 
 type WebAuthnMessage struct {
 	Message string
+}
+
+type VerificationSuccess struct {
+	Status      string `json:"status"`
+	MatchMethod string `json:"match_method"`
+	WebAuthnIP  string `json:"webauthn_ip,omitempty"`
+	UserIP      string `json:"user_ip,omitempty"`
+	NetworkName string `json:"network_name,omitempty"`
+	MatchedCIDR string `json:"matched_cidr,omitempty"`
 }
 
 type RegistrationSuccess struct {
@@ -368,15 +379,51 @@ func HandleVerify(w http.ResponseWriter, r *http.Request) {
 			util.JSONResponse(w, authError, http.StatusUnauthorized)
 			return
 		}
-		if data.IPAddr == userIP {
-			// Check once and delete
+		webAuthnIPStr := data.IPAddr
+		// Check for exact IP match first
+		if webAuthnIPStr == userIP {
 			delete(loginVerifications, username)
-			logger.Infof("User %s verified successfully from %s", username, userIP)
-			util.JSONResponse(w, WebAuthnMessage{Message: "OK"}, http.StatusOK)
+			logger.Infof("User %s verified successfully with exact IP match from %s", username, userIP)
+			response := VerificationSuccess{
+				Status:      "OK",
+				MatchMethod: "exact",
+			}
+			util.JSONResponse(w, response, http.StatusOK)
 			return
-		} else {
-			logger.Warnf("User %s failed verification: auth IP %s, validating IP %s", username, data.IPAddr, userIP)
 		}
+
+		// If exact match fails, check for cidr_network CIDR match
+		parsedWebAuthnIP := net.ParseIP(webAuthnIPStr)
+		parsedUserIP := net.ParseIP(userIP)
+		if parsedWebAuthnIP != nil && parsedUserIP != nil {
+			for networkName, cidrs := range configuration.CidrNetworks {
+				for _, cidrStr := range cidrs {
+					_, ipNet, err := net.ParseCIDR(cidrStr)
+					if err != nil {
+						logger.Warnf("Invalid CIDR in config for %s: %s", networkName, cidrStr)
+						continue
+					}
+					if ipNet.Contains(parsedWebAuthnIP) && ipNet.Contains(parsedUserIP) {
+						delete(loginVerifications, username)
+						logger.Infof("User %s verified successfully with CIDR match: WebAuthnIP=%s, UserIP=%s, Network=%s, CIDR=%s",
+							username, webAuthnIPStr, userIP, networkName, cidrStr)
+						response := VerificationSuccess{
+							Status:      "OK",
+							MatchMethod: "cidr",
+							WebAuthnIP:  webAuthnIPStr,
+							UserIP:      userIP,
+							NetworkName: networkName,
+							MatchedCIDR: cidrStr,
+						}
+						util.JSONResponse(w, response, http.StatusOK)
+						return
+					}
+				}
+			}
+		}
+
+		// both checks failed
+		logger.Warnf("User %s failed verification: auth IP %s, validating IP %s. No exact or CIDR match found.", username, webAuthnIPStr, userIP)
 	}
 	util.JSONResponse(w, authError, http.StatusUnauthorized)
 }
