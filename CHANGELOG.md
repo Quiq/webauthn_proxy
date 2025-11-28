@@ -1,5 +1,10 @@
 ## Changelog
 
+### 0.5 (2025-11-28)
+
+* UI renovation.
+* Dependency upgrade.
+
 ### 0.4 (2025-09-24)
 
 * Support dark mode based on what you have set in the OS.

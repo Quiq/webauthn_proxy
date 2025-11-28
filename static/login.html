@@ -1,11 +1,56 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
     <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>WebAuthn Proxy Login</title>
         <link rel="icon" type="image/x-icon" href="/webauthn/static/favicon.ico" />
-        <link rel="stylesheet" type="text/css" href="/webauthn/static/styles.css"  />
-        <script src="/webauthn/static/jquery-3.6.3.min.js"></script>
-        <script src="/webauthn/static/script.js"></script>
+        <link href="/webauthn/static/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="/webauthn/static/css/bootstrap-icons.min.css">
+    </head>
+    <body>
+        <!-- Theme Toggle -->
+        <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050;">
+            <button class="btn btn-sm btn-outline-secondary" type="button" id="theme-toggle" title="Toggle theme">
+                <i class="bi bi-sun-fill"></i>
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="container mt-5">
+            <div class="row justify-content-center">
+                <div class="col-md-6 col-lg-5">
+                    <div class="card shadow">
+                        <div class="card-body">
+                            <div class="text-center mb-4">
+                                <img src="/webauthn/static/title-image.png" class="img-fluid" alt="WebAuthn Proxy" style="max-width: 300px;" />
+                            </div>
+
+                            <div id="errorMessages" class="alert alert-danger d-none" role="alert"></div>
+                            <div id="successMessages" class="alert alert-success d-none" role="alert"></div>
+
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Authenticate</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" name="username" id="username" autocomplete="off" data-1p-ignore placeholder="Username" />
+                                    <button class="btn btn-primary" id="loginButton" type="button">
+                                        <i class="bi bi-box-arrow-in-right me-1"></i> Login
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="text-center">
+                                <small class="text-muted">A new user? <a href="#" id="registerLink" class="text-decoration-none">Register</a></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="/webauthn/static/js/bootstrap.bundle.min.js"></script>
+        <script src="/webauthn/static/js/jquery.min.js"></script>
+        <script src="/webauthn/static/js/site.js"></script>
         <script>
             const registerLinkClick = (defaultUsername) => {
                 let uri = "/webauthn/register";
@@ -39,16 +84,6 @@
                                 break;
                             }
                         }
-                        // From the future: the below code works only in Chrome.
-                        // let cookie = cookieStore.get("webauthn-proxy-username");
-                        // const cookieValue = () => {
-                        //     cookie.then((a) => {
-                        //         $('#username').val(a.value);
-                        //         $('#registerLink').click(registerLinkClick.bind(registerLinkClick, a.value));
-                        //     })
-                        //     .catch(error => {})
-                        // };
-                        // cookieValue();
                     }
 
                     // Set focus and value to the username field
@@ -60,22 +95,5 @@
                 }
             });
         </script>
-    </head>
-    <body>
-        <div id="form">
-            <img src="/webauthn/static/title-image.png" />
-            <div id="errorMessages" class="errorMessageText"></div>
-            <div id="successMessages" class="successMessageText"></div>
-            <br />
-            <table>
-                <tr>
-                    <td>Authenticate:</td>
-                    <td><input type="text" name="username" id="username" size="30" autocomplete="off" data-1p-ignore /></td>
-                    <td><button id="loginButton">Login</button></td>
-                </tr>
-            </table>
-            <br />
-            New User? <a id="registerLink">Register</a>
-        </div>
     </body>
 </html>

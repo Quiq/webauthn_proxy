@@ -1,17 +1,67 @@
+// Bootstrap 5 Theme Switcher - Simple Light/Dark Toggle
+(() => {
+  'use strict';
+
+  const getStoredTheme = () => localStorage.getItem('theme');
+  const setStoredTheme = theme => localStorage.setItem('theme', theme);
+
+  const getPreferredTheme = () => {
+    const storedTheme = getStoredTheme();
+    if (storedTheme) {
+      return storedTheme;
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  };
+
+  const setTheme = theme => {
+    document.documentElement.setAttribute('data-bs-theme', theme);
+  };
+
+  setTheme(getPreferredTheme());
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const themeToggle = document.querySelector('#theme-toggle');
+    if (!themeToggle) return;
+
+    const updateToggleIcon = (theme) => {
+      const icon = themeToggle.querySelector('i');
+      if (icon) {
+        if (theme === 'dark') {
+          icon.className = 'bi bi-moon-stars-fill';
+        } else {
+          icon.className = 'bi bi-sun-fill';
+        }
+      }
+    };
+
+    updateToggleIcon(getPreferredTheme());
+
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = getStoredTheme() || getPreferredTheme();
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      setStoredTheme(newTheme);
+      setTheme(newTheme);
+      updateToggleIcon(newTheme);
+    });
+  });
+})();
+
+// Message display functions for Bootstrap alerts
 let errorMessage = message => {
-    $('#errorMessages').text(message);
-    $('#successMessages').text('');
+    $('#errorMessages').text(message).removeClass('d-none');
+    $('#successMessages').addClass('d-none');
 };
 
 let successMessage = message => {
-    $('#errorMessages').text('');
-    $('#successMessages').text(message);
+    $('#successMessages').text(message).removeClass('d-none');
+    $('#errorMessages').addClass('d-none');
 };
 
 let preformattedMessage = message => {
-    $('#preformattedMessages').text(message);
+    $('#preformattedMessages').val(message);
 };
 
+// Browser WebAuthn support check
 let browserCheck = () => {
     if (!window.PublicKeyCredential) {
         errorMessage('This browser does not support WebAuthn :(');
@@ -21,6 +71,7 @@ let browserCheck = () => {
     return true;
 };
 
+// Base64url encoding/decoding utilities
 // base64url > base64 > Uint8Array > ArrayBuffer
 let bufferDecode = value => Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0))
     .buffer;
@@ -29,6 +80,7 @@ let bufferDecode = value => Uint8Array.from(atob(value.replace(/-/g, "+").replac
 let bufferEncode = value => btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
     .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 
+// Format registration parameters for API
 let formatFinishRegParams = cred => JSON.stringify({
     id: cred.id,
     rawId: bufferEncode(cred.rawId),
@@ -39,6 +91,7 @@ let formatFinishRegParams = cred => JSON.stringify({
     },
 });
 
+// Format login parameters for API
 let formatFinishLoginParams = assertion => JSON.stringify({
     id: assertion.id,
     rawId: bufferEncode(assertion.rawId),
@@ -51,6 +104,7 @@ let formatFinishLoginParams = assertion => JSON.stringify({
     }
 });
 
+// WebAuthn registration flow
 let registerUser = () => {
     let username = $('#username').val();
 
@@ -95,6 +149,7 @@ let registerUser = () => {
         });
 };
 
+// WebAuthn authentication flow
 let authenticateUser = () => {
     let username = $('#username').val();
     if (username === '') {
