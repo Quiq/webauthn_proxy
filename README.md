@@ -73,7 +73,7 @@ location / {
 
 location /webauthn/ {
     proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header Host $host;
+    proxy_set_header Host $http_host;
     proxy_pass http://127.0.0.1:8080;
 }
 ```
