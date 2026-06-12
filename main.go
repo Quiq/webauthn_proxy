@@ -40,7 +40,7 @@ type Configuration struct {
 	UsernameRegex             string
 	CookieSecure              bool
 	CookieDomain              string
-	CidrNetworks            map[string][]string `yaml:"cidrNetworks"`
+	CidrNetworks              map[string][]string `yaml:"cidrNetworks"`
 }
 
 type CredentialsConfiguration struct {
@@ -80,6 +80,7 @@ const (
 var (
 	configuration      Configuration
 	loginError         WebAuthnMessage
+	cookieError        WebAuthnMessage
 	registrationError  WebAuthnMessage
 	authError          WebAuthnMessage
 	users              map[string]u.User
@@ -116,6 +117,7 @@ func main() {
 	var credentialsConfig CredentialsConfiguration
 	// Standard error messages
 	loginError = WebAuthnMessage{Message: "Unable to login"}
+	cookieError = WebAuthnMessage{Message: "Missing or invalid session cookie"}
 	registrationError = WebAuthnMessage{Message: "Error during registration"}
 	authError = WebAuthnMessage{Message: "Unauthenticated"}
 
@@ -320,7 +322,7 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	session, err := sessionStore.Get(r, configuration.SessionCookieName)
 	if err != nil {
 		logger.Errorf("Error getting session from session store during login handler: %s", err)
-		util.JSONResponse(w, loginError, http.StatusInternalServerError)
+		util.JSONResponse(w, cookieError, http.StatusInternalServerError)
 		return
 	}
 
