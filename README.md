@@ -34,8 +34,15 @@ go build -o webauthn_proxy . && chmod +x webauthn_proxy
 
 ## Setup
 
-1. **Configuration**: Create `config/config.yml` with your settings (see [Configuration](#configuration))
-2. **Credentials**: Start with an empty `config/credentials.yml` file
+1. **Configuration**: Create `config/config.yml` with your settings (see [Configuration](#configuration)).
+   `rpOrigins` is required, the proxy will not start without it.
+2. **Credentials**: Create your credentials file from the example:
+
+   ```bash
+   cp config/credentials.yml.example config/credentials.yml
+   ```
+
+   `config/credentials.yml` is git-ignored, as it holds your cookie secrets and user credentials.
 3. **Register**: Visit `http://localhost:8080/webauthn/register`
 4. **Add User**: Copy the generated credential to `credentials.yml` and restart
 5. **Login**: Visit `http://localhost:8080/webauthn/login`
@@ -45,17 +52,22 @@ go build -o webauthn_proxy . && chmod +x webauthn_proxy
 ### Required Options
 
 ```yaml
-rpDisplayName: "MyCompany"    # Your organization name
-rpID: "example.com"           # Your domain
+rpDisplayName: "MyCompany"          # Your organization name
+rpID: "example.com"                 # Your domain
+rpOrigins:                          # Allow-list of origins used to reach the proxy
+  - "https://service.example.com"
 ```
+
+`rpOrigins` is a strict allow-list and has no default. Requests whose origin is not listed
+are rejected, so the `Host` header cannot be used to spoof an origin. The proxy refuses to
+start if the list is empty.
 
 ### Common Options
 
 - `serverAddress`: Listen address (default: `0.0.0.0`)
 - `serverPort`: Listen port (default: `8080`)
-- `rpOrigins`: Allowed origins (default: all)
 - `testMode`: Allow immediate login after registration (default: `false`)
-- `cookieSecure`: Enable for HTTPS (default: `false`)
+- `cookieSecure`: Set the Secure flag on cookies (default: `true`, disable only for local plain HTTP testing)
 - `sessionSoftTimeoutSeconds`: Session timeout (default: 28800 / 8 hours)
 
 [Full configuration options](config/config.yml)

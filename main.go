@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,7 +85,6 @@ var (
 	users              map[string]u.User
 	registrations      map[string]u.User
 	cookieSecrets      []string
-	dynamicOrigins     bool
 	webAuthns          map[string]*webauthn.WebAuthn
 	sessionStores      map[string]*sessions.CookieStore
 	loginVerifications map[string]*LoginVerification
@@ -145,7 +143,7 @@ func main() {
 	viper.SetDefault("sessioncookiename", "webauthn-proxy-session")
 	viper.SetDefault("usercookiename", "webauthn-proxy-username")
 	viper.SetDefault("usernameregex", "^.+$")
-	viper.SetDefault("cookiesecure", false)
+	viper.SetDefault("cookiesecure", true)
 	viper.SetDefault("cookiedomain", "")
 
 	// Read in configuration file
@@ -227,16 +225,16 @@ func main() {
 		fmt.Printf("Warning!!! Test Mode enabled! This is not safe for production!\n\n")
 	}
 
-	// If list of relying party origins has been specified in configuration,
-	// create one Webauthn config / Session store per origin, else origins will be dynamic.
-	if len(configuration.RPOrigins) > 0 {
-		for _, origin := range configuration.RPOrigins {
-			if _, _, err := createWebAuthnClient(origin); err != nil {
-				logger.Fatalf("Failed to create WebAuthn from config: %s", err)
-			}
+	// The list of relying party origins is a strict allow-list. Never derive it from
+	// request headers, as those are user-controllable and would allow origin spoofing.
+	if len(configuration.RPOrigins) == 0 {
+		logger.Fatal("Configuration error: 'rpOrigins' cannot be empty, configure at least one valid origin")
+	}
+	// Create one Webauthn config / Session store per origin.
+	for _, origin := range configuration.RPOrigins {
+		if _, _, err := createWebAuthnClient(origin); err != nil {
+			logger.Fatalf("Failed to create WebAuthn from config: %s", err)
 		}
-	} else {
-		dynamicOrigins = true
 	}
 
 	util.CookieSecure = configuration.CookieSecure
@@ -732,18 +730,11 @@ func ProcessRegistrationAttestation(w http.ResponseWriter, r *http.Request) {
 	util.JSONResponse(w, successMessage, http.StatusOK)
 }
 
-// Check that the origin is in our configuration or we're allowing dynamic origins
+// Check that the origin is in our configuration
 func checkOrigin(r *http.Request) (*webauthn.WebAuthn, *sessions.CookieStore, error) {
-	u, err := url.Parse(r.URL.RequestURI())
-	if err != nil {
-		return nil, nil, fmt.Errorf("RPOrigin not valid URL: %+v", err)
-	}
-
-	// Try to determine the scheme, falling back to https
+	// Try to determine the scheme, falling back to http
 	var scheme string
-	if u.Scheme != "" {
-		scheme = u.Scheme
-	} else if r.Header.Get("X-Forwarded-Proto") != "" {
+	if r.Header.Get("X-Forwarded-Proto") != "" {
 		scheme = r.Header.Get("X-Forwarded-Proto")
 	} else if r.TLS != nil {
 		scheme = "https"
@@ -757,13 +748,7 @@ func checkOrigin(r *http.Request) (*webauthn.WebAuthn, *sessions.CookieStore, er
 		return webAuthn, sessionStore, nil
 	}
 
-	if !dynamicOrigins {
-		return nil, nil, fmt.Errorf("request origin not valid: %s", origin)
-	} else {
-		logger.Infof("Adding new dynamic origin: %s", origin)
-		webAuthn, sessionStore, err := createWebAuthnClient(origin)
-		return webAuthn, sessionStore, err
-	}
+	return nil, nil, fmt.Errorf("request origin %q is not a configured relying party origin", origin)
 }
 
 // createWebAuthnClient add webauthn client and session store per origin
