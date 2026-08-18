@@ -1,5 +1,17 @@
 ## Changelog
 
+### 0.6 (2026-08-18)
+
+* Upgrade dependencies.
+* Better error handling and defaults.
+* **Breaking:** `rpOrigins` is now required and is a strict allow-list. Dynamic origins derived from
+  the request `Host` header have been removed, as they allowed origin spoofing. Configure every origin
+  used to reach the proxy or it will refuse to start.
+* **Breaking:** `cookieSecure` now defaults to `true`. Set it to `false` explicitly if you serve the
+  proxy over plain HTTP.
+* `config/credentials.yml` is now shipped as `config/credentials.yml.example` and is git-ignored, so
+  forks do not accidentally commit credentials. Copy it into place before first run.
+
 ### 0.5 (2025-11-28)
 
 * UI renovation.

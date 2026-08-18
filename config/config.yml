@@ -7,9 +7,11 @@ rpDisplayName: "MyCompany"
 ## is a registrable domain suffix of or is equal to the caller’s origin's effective domain.
 rpID: localhost
 
-## rpOrigins - Array of full origins used for accessing the proxy, including port if not 80/443
+## rpOrigins - Required. Array of full origins used for accessing the proxy, including port if not 80/443.
+## This is a strict allow-list: requests arriving with any other origin are rejected.
+## At least one origin must be configured or the proxy will refuse to start.
 rpOrigins:
-#  - http://localhost:8080
+  - http://localhost:8080
 #  - https://service.example.com
 
 ## serverAddress - Address the proxy server should listen on (usually 127.0.0.1 or 0.0.0.0)
@@ -41,8 +43,9 @@ rpOrigins:
 # usernameRegex: ^[A-Za-z0-9\-\_\.\@]+$
 
 ## cookieSecure - When set to 'true', enables the Secure flag for cookies.
-## Useful when running behind a TLS reverse proxy.
-# cookieSecure: false
+## Keep it enabled when running behind a TLS reverse proxy.
+## Only disable it for local plain HTTP testing, as cookies will then be sent over unencrypted connections.
+# cookieSecure: true
 
 ## cookieDomain - The domain to be used for cookies.
 ## Useful when running WebAuthn Proxy for multiple subdomains.
