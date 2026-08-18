@@ -6,9 +6,17 @@
   const setStoredTheme = theme => localStorage.setItem('theme', theme);
 
   const getPreferredTheme = () => {
-    const storedTheme = getStoredTheme();
-    if (storedTheme) {
-      return storedTheme;
+    try {
+      const storedTheme = getStoredTheme();
+      if (storedTheme) {
+        return storedTheme;
+      }
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "SecurityError") {
+        // Safely ignore if access to localStorage is denied.
+      } else {
+        throw e;
+      }
     }
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   };
