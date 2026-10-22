@@ -71,7 +71,7 @@ func UnmarshalUser(user string) (*User, error) {
 }
 
 // Set user registration options, such as excluding registered credentials
-func (u User) UserRegistrationOptions(credCreateOptions *protocol.PublicKeyCredentialCreationOptions) {
+func (u User) UserRegistrationOptions(credCreateOptions *protocol.PublicKeyCredentialCreationOptions) error {
 	credExcludeList := []protocol.CredentialDescriptor{}
 	for _, cred := range u.Credentials {
 		descriptor := protocol.CredentialDescriptor{
@@ -82,6 +82,8 @@ func (u User) UserRegistrationOptions(credCreateOptions *protocol.PublicKeyCrede
 	}
 
 	credCreateOptions.CredentialExcludeList = credExcludeList
+
+	return nil
 }
 
 func (u User) WebAuthnID() []byte {

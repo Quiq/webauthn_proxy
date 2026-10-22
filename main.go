@@ -15,6 +15,7 @@ import (
 	util "github.com/Quiq/webauthn_proxy/util"
 
 	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/gorilla/sessions"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -30,6 +31,7 @@ type Configuration struct {
 	// Only enable test mode during testing!
 	TestMode bool
 
+	UserVerificationRequired  bool
 	ServerAddress             string
 	ServerPort                string
 	SessionSoftTimeoutSeconds int
@@ -136,6 +138,7 @@ func main() {
 	viper.SetDefault("rpid", "localhost")
 	viper.SetDefault("rporigins", []string{})
 	viper.SetDefault("testmode", false)
+	viper.SetDefault("userverificationrequired", false)
 	viper.SetDefault("serveraddress", "0.0.0.0")
 	viper.SetDefault("serverport", "8080")
 	viper.SetDefault("sessionsofttimeoutseconds", 28800)
@@ -460,7 +463,12 @@ func GetCredentialRequestOptions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Begin the login process
-	options, sessionData, err := webAuthn.BeginLogin(user)
+	// Begin the login process
+	var loginOptions []webauthn.LoginOption
+	if configuration.UserVerificationRequired {
+		loginOptions = append(loginOptions, webauthn.WithUserVerification(protocol.VerificationRequired))
+	}
+	options, sessionData, err := webAuthn.BeginLogin(user, loginOptions...)
 	if err != nil {
 		logger.Errorf("Error beginning the login process: %s", err)
 		util.JSONResponse(w, loginError, http.StatusInternalServerError)
@@ -604,7 +612,17 @@ func GetCredentialCreationOptions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate PublicKeyCredentialCreationOptions, session data}
-	options, sessionData, err := webAuthn.BeginRegistration(user, user.UserRegistrationOptions)
+	var registrationOptions []webauthn.RegistrationOption
+	registrationOptions = append(registrationOptions, user.UserRegistrationOptions)
+
+	if configuration.UserVerificationRequired {
+		registrationOptions = append(registrationOptions, func(options *protocol.PublicKeyCredentialCreationOptions) error {
+			options.AuthenticatorSelection.UserVerification = protocol.VerificationRequired
+			return nil
+		})
+	}
+
+	options, sessionData, err := webAuthn.BeginRegistration(user, registrationOptions...)
 
 	if err != nil {
 		logger.Errorf("Error beginning Webauthn registration: %s", err)
