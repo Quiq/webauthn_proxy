@@ -1,5 +1,14 @@
 ## Changelog
 
+### 0.7 (unreleased)
+
+* **Security:** fix a denial of service where concurrent requests to the unauthenticated
+  `/webauthn/register/get_credential_creation_options` endpoint could crash the process with
+  `fatal error: concurrent map writes`. Shared state (`users`, pending registrations, login
+  verifications) is now guarded by a mutex, and the one-time `/webauthn/verify` check is atomic.
+* Pending registrations now expire after 15 minutes and are capped at 1000 to prevent unbounded
+  memory growth. When the cap is reached the endpoint returns `503`.
+
 ### 0.6 (2026-08-18)
 
 * Upgrade dependencies.
