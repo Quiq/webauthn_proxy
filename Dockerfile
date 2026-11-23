@@ -1,4 +1,4 @@
-FROM golang:1.26.6-alpine3.24 AS builder
+FROM golang:1.27.3-alpine3.24 AS builder
 
 WORKDIR /opt/src
 ADD . /opt/src
