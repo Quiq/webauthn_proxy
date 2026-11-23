@@ -1,6 +1,6 @@
 ## Changelog
 
-### 0.7 (unreleased)
+### 0.7 (2026-11-23)
 
 * **Security:** fix a denial of service where concurrent requests to the unauthenticated
   `/webauthn/register/get_credential_creation_options` endpoint could crash the process with
@@ -8,6 +8,10 @@
   verifications) is now guarded by a mutex, and the one-time `/webauthn/verify` check is atomic.
 * Pending registrations now expire after 15 minutes and are capped at 1000 to prevent unbounded
   memory growth. When the cap is reached the endpoint returns `503`.
+* New optional `userVerificationRequired` setting (default `false`) to require user verification
+  (PIN or biometric) during passkey registration and login. Credentials registered without user
+  verification may fail login once it is enabled and need to be registered again.
+* Upgrade dependencies.
 
 ### 0.6 (2026-08-18)
 
