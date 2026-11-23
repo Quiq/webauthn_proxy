@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	u "github.com/Quiq/webauthn_proxy/user"
@@ -75,17 +76,23 @@ type LoginVerification struct {
 const (
 	AuthenticatedUsernameHeader = "X-Authenticated-User"
 	loginVerificationInterval   = 5 * time.Minute
+	registrationTTL             = 15 * time.Minute
+	maxPendingRegistrations     = 1000
 	staticPath                  = "static/"
 )
 
 var (
-	configuration      Configuration
-	loginError         WebAuthnMessage
-	cookieError        WebAuthnMessage
-	registrationError  WebAuthnMessage
-	authError          WebAuthnMessage
-	users              map[string]u.User
-	registrations      map[string]u.User
+	configuration     Configuration
+	loginError        WebAuthnMessage
+	cookieError       WebAuthnMessage
+	registrationError WebAuthnMessage
+	authError         WebAuthnMessage
+	users             map[string]u.User
+	registrations     map[string]u.User
+	registrationTimes map[string]time.Time
+	// stateMu guards users, registrations, registrationTimes and loginVerifications,
+	// which are mutated while serving concurrent requests.
+	stateMu            sync.Mutex
 	cookieSecrets      []string
 	webAuthns          map[string]*webauthn.WebAuthn
 	sessionStores      map[string]*sessions.CookieStore
@@ -123,6 +130,7 @@ func main() {
 
 	users = make(map[string]u.User)
 	registrations = make(map[string]u.User)
+	registrationTimes = make(map[string]time.Time)
 	webAuthns = make(map[string]*webauthn.WebAuthn)
 	sessionStores = make(map[string]*sessions.CookieStore)
 	loginVerifications = make(map[string]*LoginVerification)
@@ -375,60 +383,67 @@ func HandleVerify(w http.ResponseWriter, r *http.Request) {
 
 	username := r.URL.Query().Get("username")
 	userIP := r.URL.Query().Get("ip")
-	if data, exists := loginVerifications[username]; exists {
-		// Check whether this is whithin last 5 min.
-		if data.LoginTime.Add(loginVerificationInterval).Before(time.Now()) {
-			delete(loginVerifications, username)
-			util.JSONResponse(w, authError, http.StatusUnauthorized)
-			return
-		}
-		webAuthnIPStr := data.IPAddr
-		// Check for exact IP match first
-		if webAuthnIPStr == userIP {
-			delete(loginVerifications, username)
-			logger.Infof("User %s verified successfully with exact IP match from %s", username, userIP)
-			response := VerificationSuccess{
-				Status:      "OK",
-				MatchMethod: "exact",
-			}
-			util.JSONResponse(w, response, http.StatusOK)
-			return
-		}
+	if result := consumeVerification(username, userIP); result != nil {
+		util.JSONResponse(w, result, http.StatusOK)
+		return
+	}
+	util.JSONResponse(w, authError, http.StatusUnauthorized)
+}
 
-		// If exact match fails, check for cidr_network CIDR match
-		parsedWebAuthnIP := net.ParseIP(webAuthnIPStr)
-		parsedUserIP := net.ParseIP(userIP)
-		if parsedWebAuthnIP != nil && parsedUserIP != nil {
-			for networkName, cidrs := range configuration.CidrNetworks {
-				for _, cidrStr := range cidrs {
-					_, ipNet, err := net.ParseCIDR(cidrStr)
-					if err != nil {
-						logger.Warnf("Invalid CIDR in config for %s: %s", networkName, cidrStr)
-						continue
-					}
-					if ipNet.Contains(parsedWebAuthnIP) && ipNet.Contains(parsedUserIP) {
-						delete(loginVerifications, username)
-						logger.Infof("User %s verified successfully with CIDR match: WebAuthnIP=%s, UserIP=%s, Network=%s, CIDR=%s",
-							username, webAuthnIPStr, userIP, networkName, cidrStr)
-						response := VerificationSuccess{
-							Status:      "OK",
-							MatchMethod: "cidr",
-							WebAuthnIP:  webAuthnIPStr,
-							UserIP:      userIP,
-							NetworkName: networkName,
-							MatchedCIDR: cidrStr,
-						}
-						util.JSONResponse(w, response, http.StatusOK)
-						return
+// consumeVerification atomically checks and (on success) consumes the one-time login
+// verification for the user. Returns nil if there is no valid match.
+func consumeVerification(username, userIP string) *VerificationSuccess {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+
+	data, exists := loginVerifications[username]
+	if !exists {
+		return nil
+	}
+	// Check whether this is within last 5 min.
+	if data.LoginTime.Add(loginVerificationInterval).Before(time.Now()) {
+		delete(loginVerifications, username)
+		return nil
+	}
+	webAuthnIPStr := data.IPAddr
+	// Check for exact IP match first
+	if webAuthnIPStr == userIP {
+		delete(loginVerifications, username)
+		logger.Infof("User %s verified successfully with exact IP match from %s", username, userIP)
+		return &VerificationSuccess{Status: "OK", MatchMethod: "exact"}
+	}
+
+	// If exact match fails, check for cidr_network CIDR match
+	parsedWebAuthnIP := net.ParseIP(webAuthnIPStr)
+	parsedUserIP := net.ParseIP(userIP)
+	if parsedWebAuthnIP != nil && parsedUserIP != nil {
+		for networkName, cidrs := range configuration.CidrNetworks {
+			for _, cidrStr := range cidrs {
+				_, ipNet, err := net.ParseCIDR(cidrStr)
+				if err != nil {
+					logger.Warnf("Invalid CIDR in config for %s: %s", networkName, cidrStr)
+					continue
+				}
+				if ipNet.Contains(parsedWebAuthnIP) && ipNet.Contains(parsedUserIP) {
+					delete(loginVerifications, username)
+					logger.Infof("User %s verified successfully with CIDR match: WebAuthnIP=%s, UserIP=%s, Network=%s, CIDR=%s",
+						username, webAuthnIPStr, userIP, networkName, cidrStr)
+					return &VerificationSuccess{
+						Status:      "OK",
+						MatchMethod: "cidr",
+						WebAuthnIP:  webAuthnIPStr,
+						UserIP:      userIP,
+						NetworkName: networkName,
+						MatchedCIDR: cidrStr,
 					}
 				}
 			}
 		}
-
-		// both checks failed
-		logger.Warnf("User %s failed verification: auth IP %s, validating IP %s. No exact or CIDR match found.", username, webAuthnIPStr, userIP)
 	}
-	util.JSONResponse(w, authError, http.StatusUnauthorized)
+
+	// both checks failed
+	logger.Warnf("User %s failed verification: auth IP %s, validating IP %s. No exact or CIDR match found.", username, webAuthnIPStr, userIP)
+	return nil
 }
 
 // /webauthn/register - Serve up registration page
@@ -455,7 +470,7 @@ func GetCredentialRequestOptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, exists := users[username]
+	user, exists := lookupUser(username)
 	if !exists {
 		logger.Warnf("User %s does not exist", username)
 		util.JSONResponse(w, loginError, http.StatusBadRequest)
@@ -512,7 +527,7 @@ func ProcessLoginAssertion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, exists := users[username]
+	user, exists := lookupUser(username)
 	if !exists {
 		logger.Errorf("User %s does not exist", username)
 		util.JSONResponse(w, loginError, http.StatusBadRequest)
@@ -559,7 +574,9 @@ func ProcessLoginAssertion(w http.ResponseWriter, r *http.Request) {
 
 	// Set user as authenticated
 	userIP := util.GetUserIP(r)
+	stateMu.Lock()
 	loginVerifications[username] = &LoginVerification{IPAddr: userIP, LoginTime: time.Now()}
+	stateMu.Unlock()
 	// session cookie
 	session.Values["authenticated"] = true
 	session.Values["authenticated_user"] = username
@@ -601,14 +618,11 @@ func GetCredentialCreationOptions(w http.ResponseWriter, r *http.Request) {
 
 	// We allow a user to register multiple time with different authenticators.
 	// First check if they are an existing user
-	user, exists := users[username]
-	if !exists {
-		// Not found, see if they have registered previously
-		if user, exists = registrations[username]; !exists {
-			// Create a new user
-			user = *u.NewUser(username)
-			registrations[username] = user
-		}
+	user, err := getOrCreateRegistrant(username)
+	if err != nil {
+		logger.Errorf("Error creating registrant %s: %s", username, err)
+		util.JSONResponse(w, registrationError, http.StatusServiceUnavailable)
+		return
 	}
 
 	// Generate PublicKeyCredentialCreationOptions, session data}
@@ -667,16 +681,13 @@ func ProcessRegistrationAttestation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// First check if they are an existing user
-	user, exists := users[username]
+	user, exists := lookupUserOrRegistrant(username)
 	if !exists {
-		// Not found, check the registrants pool
-		if user, exists = registrations[username]; !exists {
-			// Somethings wrong here. We made it here without the registrant going
-			// through GetCredentialCreationOptions. Fail this request.
-			logger.Errorf("Registrant %s skipped GetCredentialCreationOptions step, failing registration", username)
-			util.JSONResponse(w, registrationError, http.StatusBadRequest)
-			return
-		}
+		// Somethings wrong here. We made it here without the registrant going
+		// through GetCredentialCreationOptions. Fail this request.
+		logger.Errorf("Registrant %s skipped GetCredentialCreationOptions step, failing registration", username)
+		util.JSONResponse(w, registrationError, http.StatusBadRequest)
+		return
 	}
 
 	// Load the session data
@@ -702,23 +713,10 @@ func ProcessRegistrationAttestation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check that the credential doesn't belong to another user or registrant
-	for _, u := range users {
-		for _, c := range u.Credentials {
-			if bytes.Equal(c.ID, credential.ID) {
-				logger.Errorf("Error registering credential for user %s, matching credential ID with user %s", username, u.Name)
-				util.JSONResponse(w, registrationError, http.StatusBadRequest)
-				return
-			}
-		}
-	}
-	for _, r := range registrations {
-		for _, c := range r.Credentials {
-			if bytes.Equal(c.ID, credential.ID) {
-				logger.Errorf("Error registering credential for user %s, matching credential ID with registrant %s", username, r.Name)
-				util.JSONResponse(w, registrationError, http.StatusBadRequest)
-				return
-			}
-		}
+	if owner, found := findCredentialOwner(credential.ID); found {
+		logger.Errorf("Error registering credential for user %s, matching credential ID with %s", username, owner)
+		util.JSONResponse(w, registrationError, http.StatusBadRequest)
+		return
 	}
 
 	// Add the credential to the user
@@ -727,8 +725,11 @@ func ProcessRegistrationAttestation(w http.ResponseWriter, r *http.Request) {
 	// Note: enabling this can be risky as it allows anyone to add themselves to the proxy.
 	// Only enable test mode during testing!
 	if configuration.TestMode {
+		stateMu.Lock()
 		users[username] = user
 		delete(registrations, username)
+		delete(registrationTimes, username)
+		stateMu.Unlock()
 	}
 
 	// Marshal the user so it can be added to the credentials file
@@ -806,4 +807,78 @@ func createWebAuthnClient(origin string) (*webauthn.WebAuthn, *sessions.CookieSt
 	}
 	sessionStores[origin] = sessionStore
 	return webAuthn, sessionStore, nil
+}
+
+// lookupUserOrRegistrant returns a configured user, or else a pending registrant.
+func lookupUserOrRegistrant(username string) (u.User, bool) {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+	if user, ok := users[username]; ok {
+		return user, true
+	}
+	user, ok := registrations[username]
+	return user, ok
+}
+
+// getOrCreateRegistrant returns the existing user or pending registrant, creating a new
+// pending registrant if needed. Expired pending registrations are pruned and their total
+// number is capped, so unauthenticated callers cannot grow memory without bound.
+func getOrCreateRegistrant(username string) (u.User, error) {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+	if user, ok := users[username]; ok {
+		return user, nil
+	}
+	now := time.Now()
+	if t, ok := registrationTimes[username]; ok && now.Sub(t) > registrationTTL {
+		delete(registrations, username)
+		delete(registrationTimes, username)
+	}
+	if user, ok := registrations[username]; ok {
+		return user, nil
+	}
+	if len(registrations) >= maxPendingRegistrations {
+		for name, t := range registrationTimes {
+			if now.Sub(t) > registrationTTL {
+				delete(registrations, name)
+				delete(registrationTimes, name)
+			}
+		}
+		if len(registrations) >= maxPendingRegistrations {
+			return u.User{}, fmt.Errorf("too many pending registrations")
+		}
+	}
+	user := *u.NewUser(username)
+	registrations[username] = user
+	registrationTimes[username] = now
+	return user, nil
+}
+
+// findCredentialOwner reports whether a credential ID already belongs to a user or registrant.
+func findCredentialOwner(id []byte) (string, bool) {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+	for _, usr := range users {
+		for _, c := range usr.Credentials {
+			if bytes.Equal(c.ID, id) {
+				return "user " + usr.Name, true
+			}
+		}
+	}
+	for _, reg := range registrations {
+		for _, c := range reg.Credentials {
+			if bytes.Equal(c.ID, id) {
+				return "registrant " + reg.Name, true
+			}
+		}
+	}
+	return "", false
+}
+
+// lookupUser returns a configured user by name.
+func lookupUser(username string) (u.User, bool) {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+	user, ok := users[username]
+	return user, ok
 }

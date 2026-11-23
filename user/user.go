@@ -82,7 +82,6 @@ func (u User) UserRegistrationOptions(credCreateOptions *protocol.PublicKeyCrede
 	}
 
 	credCreateOptions.CredentialExcludeList = credExcludeList
-
 	return nil
 }
 
